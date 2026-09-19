@@ -17,7 +17,7 @@ class PlayerCardWidget(QFrame):
     - Divider 2: Full-width horizontal divider (1px)
     - Section 3: Middle Gauges (33/33/33 split with 2 vertical dividers)
     - Divider 3: Full-width horizontal divider (1px)
-    - Section 4: Centered Tactical Tags Matrix
+    - Section 4: Filling Tactical Tags Matrix
     """
 
     def __init__(self, player: PlayerScoutingData, parent=None):
@@ -271,73 +271,91 @@ class PlayerCardWidget(QFrame):
         div3.setStyleSheet("background-color: rgba(255, 255, 255, 0.15);")
         main_layout.addWidget(div3)
 
-        # ---------------- 4. BOTTOM: Tag Badges Matrix (Centered) ----------------
+        # ---------------- 4. BOTTOM: Tag Badges Matrix (Filling & Substantial) ----------------
         tags_frame = QFrame()
         tags_frame.setObjectName("CardTags")
         tags_layout = QVBoxLayout(tags_frame)
         tags_layout.setContentsMargins(8, 8, 8, 8)
-        tags_layout.setSpacing(5)
+        tags_layout.setSpacing(6)
         tags_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Group badges into rows of 2 (or 1 if long)
-        current_row = QHBoxLayout()
-        current_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        current_row.setSpacing(5)
-        count_in_row = 0
-
-        for badge in self.player.badges:
-            b_label = QLabel(badge.label)
-            if badge.tooltip:
-                b_label.setToolTip(badge.tooltip)
-            b_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            # Apply Porofessor colored border styles (Sharp 0px corners)
-            if badge.category in ["good", "highlight"]:
-                b_label.setStyleSheet(
-                    "border: 1px solid #10b981; color: #34d399; background-color: rgba(16, 185, 129, 0.12); "
-                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
+        def get_badge_style(category: str, is_single: bool) -> str:
+            pad = "4px 14px" if is_single else "4px 6px"
+            if category in ["good", "highlight"]:
+                return (
+                    f"border: 1px solid #10b981; color: #34d399; background-color: rgba(16, 185, 129, 0.14); "
+                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 700; min-height: 22px;"
                 )
-            elif badge.category == "warning":
-                b_label.setStyleSheet(
-                    "border: 1px solid #f59e0b; color: #fbbf24; background-color: rgba(245, 158, 11, 0.12); "
-                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
+            elif category == "warning":
+                return (
+                    f"border: 1px solid #f59e0b; color: #fbbf24; background-color: rgba(245, 158, 11, 0.14); "
+                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 700; min-height: 22px;"
                 )
-            elif badge.category == "danger":
-                b_label.setStyleSheet(
-                    "border: 1px solid #ef4444; color: #f87171; background-color: rgba(239, 68, 68, 0.12); "
-                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
+            elif category == "danger":
+                return (
+                    f"border: 1px solid #ef4444; color: #f87171; background-color: rgba(239, 68, 68, 0.14); "
+                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 700; min-height: 22px;"
                 )
-            elif badge.category == "pro":
-                b_label.setStyleSheet(
-                    "border: 1px solid #38bdf8; color: #38bdf8; background-color: rgba(56, 189, 248, 0.16); "
-                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 800;"
+            elif category == "pro":
+                return (
+                    f"border: 1px solid #38bdf8; color: #38bdf8; background-color: rgba(56, 189, 248, 0.18); "
+                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 800; min-height: 22px;"
                 )
             else:
-                b_label.setStyleSheet(
-                    "border: 1px solid rgba(255, 255, 255, 0.2); color: #e2e8f0; background-color: rgba(255, 255, 255, 0.06); "
-                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 600;"
+                return (
+                    f"border: 1px solid rgba(255, 255, 255, 0.22); color: #e2e8f0; background-color: rgba(255, 255, 255, 0.08); "
+                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 600; min-height: 22px;"
                 )
 
-            is_long = len(badge.label) >= 15
-            if is_long and count_in_row > 0:
-                tags_layout.addLayout(current_row)
-                current_row = QHBoxLayout()
-                current_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                current_row.setSpacing(5)
-                count_in_row = 0
+        # Group badges into filling rows
+        badge_rows = []
+        i = 0
+        badges = self.player.badges
+        n = len(badges)
+        while i < n:
+            if i + 3 <= n:
+                b1, b2, b3 = badges[i], badges[i+1], badges[i+2]
+                if len(b1.label) + len(b2.label) + len(b3.label) <= 34 and max(len(b1.label), len(b2.label), len(b3.label)) <= 14:
+                    badge_rows.append([b1, b2, b3])
+                    i += 3
+                    continue
+            if i + 2 <= n:
+                b1, b2 = badges[i], badges[i+1]
+                if len(b1.label) + len(b2.label) <= 38:
+                    badge_rows.append([b1, b2])
+                    i += 2
+                    continue
+            badge_rows.append([badges[i]])
+            i += 1
 
-            current_row.addWidget(b_label)
-            count_in_row += 2 if is_long else 1
+        for row_badges in badge_rows:
+            row_layout = QHBoxLayout()
+            row_layout.setSpacing(6)
 
-            if count_in_row >= 2:
-                tags_layout.addLayout(current_row)
-                current_row = QHBoxLayout()
-                current_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                current_row.setSpacing(5)
-                count_in_row = 0
+            if len(row_badges) == 1:
+                # Centered single badge
+                row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                b = row_badges[0]
+                b_label = QLabel(b.label)
+                if b.tooltip:
+                    b_label.setToolTip(b.tooltip)
+                b_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                b_label.setStyleSheet(get_badge_style(b.category, is_single=True))
+                row_layout.addStretch()
+                row_layout.addWidget(b_label)
+                row_layout.addStretch()
+            else:
+                # Multi-badge row: Expand to fill full card width
+                for b in row_badges:
+                    b_label = QLabel(b.label)
+                    if b.tooltip:
+                        b_label.setToolTip(b.tooltip)
+                    b_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    b_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                    b_label.setStyleSheet(get_badge_style(b.category, is_single=False))
+                    row_layout.addWidget(b_label, 1)
 
-        if count_in_row > 0:
-            tags_layout.addLayout(current_row)
+            tags_layout.addLayout(row_layout)
 
         main_layout.addWidget(tags_frame)
         main_layout.addStretch()
