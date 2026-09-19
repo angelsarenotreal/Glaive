@@ -4,8 +4,8 @@ from typing import Dict, List, Optional, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.config import AppConfig, PLATFORM_TO_REGION
 from src.analytics import PlayerScoutingData, RecentMatchSummary, AnalyticsEngine
-
 from src.leagueofgraphs import LeagueOfGraphsClient
+from src.lcu_client import LCUClient
 
 
 class RiotApiClient:
@@ -311,7 +311,18 @@ class RiotApiClient:
         return player
 
     def scout_all_players(self, raw_players: List[Dict[str, Any]], platform: str) -> List[PlayerScoutingData]:
-        """Parallel scouts all 10 players simultaneously using lightweight thread pool."""
+        """Parallel scouts all 10 players using local LCU client or Riot Web API."""
+        # 1. Try Local LCU Client first (Fastest, 0 API key required, 100% accurate)
+        try:
+            lcu = LCUClient()
+            if lcu.is_available():
+                scouted = lcu.scout_all_via_lcu(raw_players)
+                if scouted and len(scouted) > 0:
+                    return scouted
+        except Exception as e:
+            print(f"[RiotAPI] LCU scouting fallback: {e}")
+
+        # 2. Fallback to Web API / heuristics
         results: List[PlayerScoutingData] = []
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_player = {

@@ -23,6 +23,8 @@ class HUDPromptWidget(QWidget):
     """
 
     prompt_clicked = pyqtSignal()
+    show_prompt_signal = pyqtSignal(int)
+    hide_prompt_signal = pyqtSignal()
 
     def __init__(self, hotkey: str = "ctrl+x", parent=None):
         super().__init__(parent)
@@ -30,6 +32,10 @@ class HUDPromptWidget(QWidget):
         self._auto_dismiss_timer = QTimer(self)
         self._auto_dismiss_timer.setSingleShot(True)
         self._auto_dismiss_timer.timeout.connect(self.hide_prompt)
+
+        # Thread-safe slots
+        self.show_prompt_signal.connect(self.show_prompt)
+        self.hide_prompt_signal.connect(self.hide_prompt)
 
         # Window Flags: Frameless, Always on Top, Non-activating tool window
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
@@ -48,6 +54,13 @@ class HUDPromptWidget(QWidget):
                 current_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
                 new_style = current_style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST
                 user32.SetWindowLongW(hwnd, GWL_EXSTYLE, new_style)
+                # Force HWND_TOPMOST Z-order without stealing focus
+                HWND_TOPMOST = -1
+                SWP_NOMOVE = 0x0002
+                SWP_NOSIZE = 0x0001
+                SWP_NOACTIVATE = 0x0010
+                SWP_SHOWWINDOW = 0x0040
+                user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW)
             except Exception as e:
                 print(f"[HUDPrompt] Error setting Win32 flags: {e}")
 

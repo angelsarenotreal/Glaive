@@ -30,38 +30,38 @@ class PlayerScoutingData:
     spell2_name: str = "teleport"
 
     # Champion Specific Form & Mastery
-    champion_mastery_level: int = 209
-    champion_kills_str: str = "6.2"
-    champion_deaths_str: str = "3.7"
-    champion_assists_str: str = "4.7"
-    champion_games: int = 201
-    champion_wins: int = 117
-    champion_server_rank: str = "Rank: #80"
+    champion_mastery_level: int = 1
+    champion_kills_str: str = ""
+    champion_deaths_str: str = ""
+    champion_assists_str: str = ""
+    champion_games: int = 0
+    champion_wins: int = 0
+    champion_server_rank: str = ""
 
     # Ranked Overview
-    tier: str = "GRANDMASTER"
+    tier: str = "UNRANKED"
     rank: str = ""
-    league_points: int = 807
-    ranked_wins: int = 198
-    ranked_losses: int = 164
-    server_rank: str = "Rank: #4,608"
+    league_points: int = 0
+    ranked_wins: int = 0
+    ranked_losses: int = 0
+    server_rank: str = ""
 
     # 12-Hour & 30-Day Activity
-    twelve_hr_games: int = 2
-    twelve_hr_wins: int = 2
-    thirty_day_games: int = 277
-    thirty_day_wins: int = 162
-    main_role: str = "Top"
+    twelve_hr_games: int = 0
+    twelve_hr_wins: int = 0
+    thirty_day_games: int = 0
+    thirty_day_wins: int = 0
+    main_role: str = ""
     is_autofilled: bool = False
 
     # Detailed Heuristic Attributes
     champion_mastery_points: int = 0
-    cs_per_minute: float = 7.5
-    kill_participation_pct: float = 50.0
-    vision_score_per_minute: float = 1.0
-    first_blood_participation_pct: float = 15.0
-    kills_at_15: float = 1.5
-    deaths_at_15: float = 1.0
+    cs_per_minute: float = 0.0
+    kill_participation_pct: float = 0.0
+    vision_score_per_minute: float = 0.0
+    first_blood_participation_pct: float = 0.0
+    kills_at_15: float = 0.0
+    deaths_at_15: float = 0.0
 
     # Recent Matches
     recent_matches: List[RecentMatchSummary] = field(default_factory=list)
@@ -101,72 +101,72 @@ class PlayerScoutingData:
     @property
     def rank_label(self) -> str:
         t = self.tier.capitalize()
-        if self.tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER", "UNRANKED"]:
-            return f"{t} {self.league_points} LP" if self.tier.upper() != "UNRANKED" else "Unranked"
+        if self.tier.upper() == "UNRANKED" or not self.tier:
+            return "Unranked"
+        if self.tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER"]:
+            return f"{t} {self.league_points} LP"
         return f"{t} {self.rank} {self.league_points} LP"
 
 
 class AnalyticsEngine:
     """
     Calculates tactical tags, streaks, and threat evaluations matching Porofessor's Heuristics Engine.
-    Implements all 9 core rules from the technical specification.
+    Implements core rules grounded in genuine, verified player statistics.
     """
 
     @staticmethod
     def compute_player_badges(player: PlayerScoutingData) -> List[Badge]:
-        # If player already has curated badges (e.g. from mock/LeagueOfGraphs), return them
+        # If player already has curated badges, return them
         if player.badges:
             return player.badges
 
         badges: List[Badge] = []
 
-        # 1. OTP {Champion}: Mastery > 200k OR Winrate >= 60% with games >= 15
-        recent_champ_count = sum(1 for m in player.recent_matches if m.champion.lower() == player.champion_name.lower())
-        recent_total = len(player.recent_matches) or 1
-        if (player.champion_mastery_points > 200_000 or player.champion_mastery_level >= 50 or (player.champion_winrate >= 60.0 and player.champion_games >= 15) or player.champion_games >= 25):
-            badges.append(Badge(f"OTP {player.champion_name}", "good", "Champion Specialist / High game volume"))
+        # 1. Millionaire Badge: Real 1,000,000+ points or mastery lvl >= 100
+        if player.champion_mastery_points >= 1_000_000 or player.champion_mastery_level >= 100:
+            badges.append(Badge(f"Millionaire: {player.champion_name}", "good", "Over 1 Million Mastery Points"))
 
-        # 2. First Time / Casual: Mastery level < 4 OR games <= 1
-        if player.champion_games <= 1 and (player.ranked_wins + player.ranked_losses) >= 10:
-            badges.append(Badge("First Time", "warning", f"Only {player.champion_games} games recorded on {player.champion_name}"))
-        elif player.champion_mastery_level < 4 or (player.champion_games < 3 and player.ranked_wins + player.ranked_losses >= 10):
-            badges.append(Badge(f"{player.champion_name} casual", "danger", f"Low games on {player.champion_name}"))
+        # 2. OTP {Champion}: Mastery > 300k OR Winrate >= 60% with games >= 15
+        elif (player.champion_mastery_points >= 300_000 or player.champion_mastery_level >= 30 or (player.champion_winrate >= 60.0 and player.champion_games >= 15)):
+            badges.append(Badge(f"OTP {player.champion_name}", "good", "Champion Specialist / High mastery volume"))
 
-        # 3. Good CSer: Average CS/min >= 8.0
+        # 3. High Mastery Veteran: 100k+ points or level >= 10
+        elif player.champion_mastery_points >= 100_000 or player.champion_mastery_level >= 10:
+            badges.append(Badge(f"Mastery Lvl {player.champion_mastery_level}", "highlight", f"{player.champion_mastery_points:,} mastery points on {player.champion_name}"))
+
+        # 4. First Time / Casual: Mastery level <= 2 AND low points
+        if player.champion_mastery_level <= 1 and player.champion_mastery_points < 3_000:
+            badges.append(Badge(f"First Time {player.champion_name}", "warning", f"Under 3,000 mastery points on {player.champion_name}"))
+        elif player.champion_mastery_level <= 3 and player.champion_mastery_points < 15_000:
+            badges.append(Badge(f"{player.champion_name} casual", "danger", f"Low games ({player.champion_mastery_points:,} pts) on {player.champion_name}"))
+
+        # 5. Good CSer: Average CS/min >= 8.0
         if player.cs_per_minute >= 8.0 and player.assigned_position.upper() in ["TOP", "MIDDLE", "BOTTOM"]:
             badges.append(Badge("Good CSer", "good", f"Averages {player.cs_per_minute:.1f} CS/Min"))
 
-        # 4. Aggressive Laner: First Blood part >= 30% OR kills @ 15 >= 2.5
+        # 6. Aggressive Laner
         if player.first_blood_participation_pct >= 30.0 or player.kills_at_15 >= 2.5:
             badges.append(Badge("Aggressive Laner", "good", "High early forward kill pressure in lane"))
 
-        # 5. Vulnerable Laner: Deaths before 15 min >= 2.0
+        # 7. Vulnerable Laner
         if player.deaths_at_15 >= 2.0:
             badges.append(Badge("Vulnerable Laner", "danger", "High early death frequency in lane"))
 
-        # 6. Good vision: Vision score/min >= 1.5 (or >= 2.5 for Support)
+        # 8. Good vision
         is_support = player.assigned_position.upper() == "UTILITY"
         threshold = 2.5 if is_support else 1.5
         if player.vision_score_per_minute >= threshold:
             badges.append(Badge("Good vision", "good", "Places high quantity of control & stealth wards"))
 
-        # 7. High Kill Participation: KP >= 65%
+        # 9. High Kill Participation
         if player.kill_participation_pct >= 65.0:
             badges.append(Badge("High Kill Participation", "good", f"Involved in {player.kill_participation_pct:.0f}% of team kills"))
 
-        # 8. Waking up: Has not played a game in > 7 days or 0 games in past 12h
-        if player.twelve_hr_games == 0:
-            badges.append(Badge("Waking up", "warning", "First game of the day / Inactive recently"))
-
-        # 9. Godlike {Champion}: Win rate on champ >= 70% with at least 15 games
-        if player.champion_winrate >= 70.0 and player.champion_games >= 15:
+        # 10. Godlike {Champion}: Win rate on champ >= 70% with at least 10 games
+        if player.champion_winrate >= 70.0 and player.champion_games >= 10:
             badges.append(Badge(f"Godlike {player.champion_name}", "good", f"{player.champion_winrate:.0f}% WR on {player.champion_name}"))
 
-        # Millionaire Badge
-        if player.champion_mastery_level >= 100 or player.champion_mastery_points >= 1_000_000:
-            badges.append(Badge(f"Millionaire: {player.champion_name}", "good", "Over 1 Million Mastery Points"))
-
-        # Win/Loss Streaks
+        # 11. Streaks
         if player.recent_matches:
             wins_streak = 0
             loss_streak = 0

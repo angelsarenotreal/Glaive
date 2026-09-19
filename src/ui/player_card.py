@@ -142,22 +142,30 @@ class PlayerCardWidget(QFrame):
         left_col.addLayout(champ_row)
 
         # KDA line: Green kills / Red deaths / Amber assists
-        kda_label = QLabel(
-            f"<span style='color:#34d399; font-weight:800;'>{self.player.champion_kills_str}</span> / "
-            f"<span style='color:#f87171; font-weight:800;'>{self.player.champion_deaths_str}</span> / "
-            f"<span style='color:#fbbf24; font-weight:800;'>{self.player.champion_assists_str}</span>"
-        )
+        if self.player.champion_kills_str:
+            kda_text = (
+                f"<span style='color:#34d399; font-weight:800;'>{self.player.champion_kills_str}</span> / "
+                f"<span style='color:#f87171; font-weight:800;'>{self.player.champion_deaths_str}</span> / "
+                f"<span style='color:#fbbf24; font-weight:800;'>{self.player.champion_assists_str}</span>"
+            )
+        else:
+            kda_text = "<span style='color:#64748b; font-weight:600;'>- / - / -</span>"
+        kda_label = QLabel(kda_text)
         kda_label.setStyleSheet("font-size: 12px;")
         kda_label.setTextFormat(Qt.TextFormat.RichText)
         kda_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_col.addWidget(kda_label)
 
         # Champion Winrate line
-        c_wr_color = "#38bdf8" if self.player.champion_winrate >= 50 else "#f87171"
-        champ_wr_label = QLabel(
-            f"<span style='color:{c_wr_color}; font-weight:700;'>{self.player.champion_winrate:.0f}%</span> "
-            f"<span style='color:#94a3b8;'>({self.player.champion_wins} / {self.player.champion_games})</span>"
-        )
+        if self.player.champion_games > 0:
+            c_wr_color = "#38bdf8" if self.player.champion_winrate >= 50 else "#f87171"
+            champ_wr_text = (
+                f"<span style='color:{c_wr_color}; font-weight:700;'>{self.player.champion_winrate:.0f}%</span> "
+                f"<span style='color:#94a3b8;'>({self.player.champion_wins} / {self.player.champion_games})</span>"
+            )
+        else:
+            champ_wr_text = "<span style='color:#64748b; font-size:10px;'>0 Games</span>"
+        champ_wr_label = QLabel(champ_wr_text)
         champ_wr_label.setStyleSheet("font-size: 11px;")
         champ_wr_label.setTextFormat(Qt.TextFormat.RichText)
         champ_wr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -201,12 +209,16 @@ class PlayerCardWidget(QFrame):
         right_col.addWidget(rank_tier_label)
 
         # Ranked Winrate line
-        r_wr_color = "#38bdf8" if self.player.ranked_winrate >= 50 else "#f87171"
         total_ranked = self.player.ranked_wins + self.player.ranked_losses
-        ranked_wr_label = QLabel(
-            f"<span style='color:{r_wr_color}; font-weight:700;'>{self.player.ranked_winrate:.0f}%</span> "
-            f"<span style='color:#94a3b8;'>({self.player.ranked_wins} / {total_ranked})</span>"
-        )
+        if total_ranked > 0:
+            r_wr_color = "#38bdf8" if self.player.ranked_winrate >= 50 else "#f87171"
+            ranked_wr_text = (
+                f"<span style='color:{r_wr_color}; font-weight:700;'>{self.player.ranked_winrate:.0f}%</span> "
+                f"<span style='color:#94a3b8;'>({self.player.ranked_wins} / {total_ranked})</span>"
+            )
+        else:
+            ranked_wr_text = "<span style='color:#64748b; font-size:10px;'>Unranked</span>"
+        ranked_wr_label = QLabel(ranked_wr_text)
         ranked_wr_label.setStyleSheet("font-size: 11px;")
         ranked_wr_label.setTextFormat(Qt.TextFormat.RichText)
         ranked_wr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

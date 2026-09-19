@@ -1,5 +1,12 @@
 import os
 import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import ctypes
 import argparse
 import threading
@@ -113,19 +120,25 @@ def main():
 
     # 9. Handle Live Match Callbacks
     def on_live_match(raw_players):
+        print(f"[Main] Live match detected with {len(raw_players)} players.")
         overlay.update_status_signal.emit("● SCOUTING PLAYERS VIA RIOT API...", "LIVE MATCH DETECTED")
-        tray_icon.notify("Live Match Detected", f"Scouting {len(raw_players)} players on Summoner's Rift...")
         
-        # Parallel scout all 10 players
-        scouted_players = api_client.scout_all_players(raw_players, cfg.default_platform)
-        overlay.update_players_signal.emit(scouted_players)
-        overlay.update_status_signal.emit("● LIVE MATCH ACTIVE", "SUMMONER'S RIFT · LIVE SCOUTING")
+        # Immediately pop up the top-center HUD prompt banner (thread-safe signal)
+        hud_prompt.show_prompt_signal.emit(12000)
 
-        # Prompt top-center HUD notification during loading screen
-        hud_prompt.show_prompt(duration_ms=10000)
+        # Scout players asynchronously in background worker so nothing blocks or delays UI
+        def do_scout():
+            try:
+                scouted_players = api_client.scout_all_players(raw_players, cfg.default_platform)
+                overlay.update_players_signal.emit(scouted_players)
+                overlay.update_status_signal.emit("● LIVE MATCH ACTIVE", "SUMMONER'S RIFT · LIVE SCOUTING")
+            except Exception as e:
+                print(f"[Main] Error during live player scouting: {e}")
+
+        threading.Thread(target=do_scout, daemon=True).start()
 
     def on_match_ended():
-        hud_prompt.hide_prompt()
+        hud_prompt.hide_prompt_signal.emit()
         overlay.show_waiting_state()
         overlay.update_status_signal.emit("● WAITING FOR MATCH (PORT 2999)", "LIVE SCOUTING REPORT")
 
@@ -135,7 +148,8 @@ def main():
 
     # 11. Start Global Hotkey Listener (Ctrl + X)
     def trigger_hotkey():
-        hud_prompt.hide_prompt()
+        print(f"[Main] Hotkey {cfg.hotkey.upper()} triggered.")
+        hud_prompt.hide_prompt_signal.emit()
         overlay.toggle_visibility_signal.emit()
 
     hotkey_thread = GlobalHotkeyListener(cfg.hotkey, trigger_hotkey)

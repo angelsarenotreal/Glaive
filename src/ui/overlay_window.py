@@ -314,7 +314,19 @@ class GlaiveOverlayWindow(QWidget):
             self._is_visible = False
         else:
             self.show()
+            self.raise_()
+            self.activateWindow()
             self.apply_win32_optimizations()
+            if sys.platform == "win32":
+                try:
+                    hwnd = int(self.winId())
+                    HWND_TOPMOST = -1
+                    SWP_NOMOVE = 0x0002
+                    SWP_NOSIZE = 0x0001
+                    SWP_SHOWWINDOW = 0x0040
+                    ctypes.windll.user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+                except Exception:
+                    pass
             self._is_visible = True
 
     def open_settings(self):
