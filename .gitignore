@@ -36,6 +36,8 @@ ENV/
 *.swp
 *.swo
 
-# Local config & logs
+# Local config, keys & logs
 config.json
+.env
+*.env
 *.log

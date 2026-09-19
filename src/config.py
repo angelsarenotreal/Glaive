@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from pathlib import Path
 from dataclasses import dataclass, asdict, field
@@ -50,6 +51,36 @@ AVAILABLE_REGIONS = [
 ]
 
 
+def load_env_file() -> Dict[str, str]:
+    """Scans potential directories for .env and returns key-value pairs."""
+    env_vars: Dict[str, str] = {}
+    search_dirs = [
+        Path.cwd(),
+        Path(__file__).resolve().parent.parent,
+        Path(sys.executable).parent if getattr(sys, "frozen", False) else Path.cwd(),
+    ]
+
+    for d in search_dirs:
+        env_file = d / ".env"
+        if env_file.exists():
+            try:
+                with open(env_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            env_vars[k.strip()] = v.strip().strip('"').strip("'")
+            except Exception as e:
+                print(f"[Config] Error reading .env: {e}")
+            break
+
+    # Apply to os.environ
+    for k, v in env_vars.items():
+        os.environ[k] = v
+
+    return env_vars
+
+
 @dataclass
 class AppConfig:
     riot_api_key: str = ""
@@ -72,31 +103,44 @@ class ConfigManager:
     """Manages reading and writing application configuration safely."""
 
     def __init__(self, config_path: str | None = None):
+        self.env_vars = load_env_file()
+
         if config_path:
             self.config_file = Path(config_path)
         else:
-            # Place in local app directory or user app data
             base_dir = Path(__file__).resolve().parent.parent
             self.config_file = base_dir / "config.json"
 
         self.config: AppConfig = self.load()
 
     def load(self) -> AppConfig:
+        env_key = os.environ.get("RIOT_API_KEY") or self.env_vars.get("RIOT_API_KEY", "")
+        env_platform = os.environ.get("DEFAULT_PLATFORM") or self.env_vars.get("DEFAULT_PLATFORM", "")
+
         if not self.config_file.exists():
             cfg = AppConfig()
-            # Also check environment variables
-            env_key = os.environ.get("RIOT_API_KEY")
             if env_key:
                 cfg.riot_api_key = env_key
+            if env_platform:
+                cfg.default_platform = env_platform
             self.save(cfg)
             return cfg
 
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return AppConfig(**data)
+                cfg = AppConfig(**data)
+                # If config.json doesn't have an api key, fill from .env
+                if not cfg.riot_api_key and env_key:
+                    cfg.riot_api_key = env_key
+                if env_platform and cfg.default_platform == "euw1":
+                    cfg.default_platform = env_platform
+                return cfg
         except Exception:
-            return AppConfig()
+            cfg = AppConfig()
+            if env_key:
+                cfg.riot_api_key = env_key
+            return cfg
 
     def save(self, config: AppConfig | None = None) -> None:
         if config is not None:
