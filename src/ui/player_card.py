@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from src.analytics import PlayerScoutingData, Badge
 from src.asset_manager import AssetManager, CircularGaugeWidget
 
