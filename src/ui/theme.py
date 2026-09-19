@@ -1,6 +1,7 @@
 """
-Opaque, high-contrast dark theme styling and tokens for Glaive.
-Matches Porofessor's exact color balance, crisp borders, and zero transparency distortion.
+Pitch black theme styling and high-contrast tokens for Glaive.
+Container: #000000 (Pure Pitch Black).
+Player Cards: #0d1117 (Pitch Black with subtle lighter tint for contrast).
 """
 
 MAIN_STYLESHEET = """
@@ -9,46 +10,27 @@ QWidget#GlaiveOverlay {
 }
 
 QDialog {
-    background-color: #0c1017;
+    background-color: #000000;
     color: #f8fafc;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 QFrame#MainContainer {
-    background-color: #0c1017;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background-color: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0px;
-}
-
-QFrame#HeaderFrame {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    background-color: #111722;
-    border-radius: 0px;
-}
-
-QLabel#AppTitle {
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 2px;
-}
-
-QLabel#StatusLabel {
-    color: #94a3b8;
-    font-size: 11px;
-    font-weight: 600;
 }
 
 QFrame#PlayerCard {
-    background-color: #151d27;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background-color: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0px;
     padding: 0px;
 }
 
 QFrame#PlayerCard:hover {
-    background-color: #1c2634;
-    border: 1px solid rgba(56, 189, 248, 0.5);
+    background-color: #141922;
+    border: 1px solid rgba(56, 189, 248, 0.45);
 }
 
 QLabel#PlayerName {
@@ -122,7 +104,7 @@ QPushButton#IconButton:hover {
 
 /* Inputs & Form */
 QLineEdit, QComboBox {
-    background-color: #151d27;
+    background-color: #0d1117;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 0px;
     color: #f8fafc;
@@ -140,7 +122,7 @@ QComboBox::drop-down {
 }
 
 QComboBox QAbstractItemView {
-    background-color: #151d27;
+    background-color: #0d1117;
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #f8fafc;
     selection-background-color: rgba(56, 189, 248, 0.2);

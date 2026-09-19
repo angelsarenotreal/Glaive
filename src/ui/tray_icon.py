@@ -39,7 +39,7 @@ class GlaiveTrayIcon(QSystemTrayIcon):
         menu = QMenu()
         menu.setStyleSheet("""
             QMenu {
-                background-color: #111722;
+                background-color: #0d1117;
                 color: #f8fafc;
                 border: 1px solid rgba(255, 255, 255, 0.18);
                 border-radius: 0px;

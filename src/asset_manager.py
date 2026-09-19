@@ -295,7 +295,7 @@ class CircularGaugeWidget(QWidget):
 
         # Background track
         painter.setPen(QPen(QColor(255, 255, 255, 25), 4.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        painter.setBrush(QColor(15, 20, 28, 255))
+        painter.setBrush(QColor(13, 17, 23, 255))
         painter.drawEllipse(rect)
 
         # Foreground Progress Arc
