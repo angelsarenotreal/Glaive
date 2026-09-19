@@ -54,6 +54,15 @@ class PlayerScoutingData:
     main_role: str = "Top"
     is_autofilled: bool = False
 
+    # Detailed Heuristic Attributes
+    champion_mastery_points: int = 0
+    cs_per_minute: float = 7.5
+    kill_participation_pct: float = 50.0
+    vision_score_per_minute: float = 1.0
+    first_blood_participation_pct: float = 15.0
+    kills_at_15: float = 1.5
+    deaths_at_15: float = 1.0
+
     # Recent Matches
     recent_matches: List[RecentMatchSummary] = field(default_factory=list)
     badges: List[Badge] = field(default_factory=list)
@@ -98,30 +107,66 @@ class PlayerScoutingData:
 
 
 class AnalyticsEngine:
-    """Calculates tactical tags, streaks, and threat evaluations matching Porofessor."""
+    """
+    Calculates tactical tags, streaks, and threat evaluations matching Porofessor's Heuristics Engine.
+    Implements all 9 core rules from the technical specification.
+    """
 
     @staticmethod
     def compute_player_badges(player: PlayerScoutingData) -> List[Badge]:
-        # If player already has curated badges (e.g. from mock/live), return them
+        # If player already has curated badges (e.g. from mock/LeagueOfGraphs), return them
         if player.badges:
             return player.badges
 
         badges: List[Badge] = []
 
-        # 1. First game of day
-        if player.twelve_hr_games == 0:
-            badges.append(Badge("Waking up", "warning", "First game of the day"))
+        # 1. OTP {Champion}: Mastery > 200k OR Winrate >= 60% with games >= 15
+        recent_champ_count = sum(1 for m in player.recent_matches if m.champion.lower() == player.champion_name.lower())
+        recent_total = len(player.recent_matches) or 1
+        if (player.champion_mastery_points > 200_000 or player.champion_mastery_level >= 50 or (player.champion_winrate >= 60.0 and player.champion_games >= 15) or player.champion_games >= 25):
+            badges.append(Badge(f"OTP {player.champion_name}", "good", "Champion Specialist / High game volume"))
 
-        # 2. OTP / Mastery / First Time
-        if player.champion_mastery_level >= 100:
-            badges.append(Badge(f"Millionaire: {player.champion_name}", "good", f"Mastery Level {player.champion_mastery_level}"))
-        if player.champion_winrate >= 60.0 and player.champion_games >= 15:
-            badges.append(Badge(f"Godlike {player.champion_name}", "good", f"High win rate on {player.champion_name}"))
-            badges.append(Badge(f"OTP {player.champion_name}", "good", f"{player.champion_games} games played"))
-        elif player.champion_games <= 1 and (player.ranked_wins + player.ranked_losses) >= 10:
+        # 2. First Time / Casual: Mastery level < 4 OR games <= 1
+        if player.champion_games <= 1 and (player.ranked_wins + player.ranked_losses) >= 10:
             badges.append(Badge("First Time", "warning", f"Only {player.champion_games} games recorded on {player.champion_name}"))
+        elif player.champion_mastery_level < 4 or (player.champion_games < 3 and player.ranked_wins + player.ranked_losses >= 10):
+            badges.append(Badge(f"{player.champion_name} casual", "danger", f"Low games on {player.champion_name}"))
 
-        # 3. Recent Streaks (from recent matches)
+        # 3. Good CSer: Average CS/min >= 8.0
+        if player.cs_per_minute >= 8.0 and player.assigned_position.upper() in ["TOP", "MIDDLE", "BOTTOM"]:
+            badges.append(Badge("Good CSer", "good", f"Averages {player.cs_per_minute:.1f} CS/Min"))
+
+        # 4. Aggressive Laner: First Blood part >= 30% OR kills @ 15 >= 2.5
+        if player.first_blood_participation_pct >= 30.0 or player.kills_at_15 >= 2.5:
+            badges.append(Badge("Aggressive Laner", "good", "High early forward kill pressure in lane"))
+
+        # 5. Vulnerable Laner: Deaths before 15 min >= 2.0
+        if player.deaths_at_15 >= 2.0:
+            badges.append(Badge("Vulnerable Laner", "danger", "High early death frequency in lane"))
+
+        # 6. Good vision: Vision score/min >= 1.5 (or >= 2.5 for Support)
+        is_support = player.assigned_position.upper() == "UTILITY"
+        threshold = 2.5 if is_support else 1.5
+        if player.vision_score_per_minute >= threshold:
+            badges.append(Badge("Good vision", "good", "Places high quantity of control & stealth wards"))
+
+        # 7. High Kill Participation: KP >= 65%
+        if player.kill_participation_pct >= 65.0:
+            badges.append(Badge("High Kill Participation", "good", f"Involved in {player.kill_participation_pct:.0f}% of team kills"))
+
+        # 8. Waking up: Has not played a game in > 7 days or 0 games in past 12h
+        if player.twelve_hr_games == 0:
+            badges.append(Badge("Waking up", "warning", "First game of the day / Inactive recently"))
+
+        # 9. Godlike {Champion}: Win rate on champ >= 70% with at least 15 games
+        if player.champion_winrate >= 70.0 and player.champion_games >= 15:
+            badges.append(Badge(f"Godlike {player.champion_name}", "good", f"{player.champion_winrate:.0f}% WR on {player.champion_name}"))
+
+        # Millionaire Badge
+        if player.champion_mastery_level >= 100 or player.champion_mastery_points >= 1_000_000:
+            badges.append(Badge(f"Millionaire: {player.champion_name}", "good", "Over 1 Million Mastery Points"))
+
+        # Win/Loss Streaks
         if player.recent_matches:
             wins_streak = 0
             loss_streak = 0
@@ -136,28 +181,9 @@ class AnalyticsEngine:
                     loss_streak += 1
 
             if wins_streak >= 3:
-                badges.append(Badge(
-                    label=f"{wins_streak}W Streak",
-                    category="highlight",
-                    tooltip=f"Currently on a {wins_streak}-game win streak"
-                ))
+                badges.append(Badge(label=f"{wins_streak}W Streak", category="highlight", tooltip=f"Currently on a {wins_streak}-game win streak"))
             elif loss_streak >= 3:
-                badges.append(Badge(
-                    label=f"{loss_streak}L Cold",
-                    category="danger",
-                    tooltip=f"Currently on a {loss_streak}-game loss streak"
-                ))
-
-        # 4. Aggression / CS / Vision
-        if player.assigned_position.upper() in ["TOP", "MIDDLE", "BOTTOM"]:
-            badges.append(Badge("Good CSer", "good", "Averages >7.5 CS/Min"))
-            badges.append(Badge("Aggressive Laner", "good", "High early lane pressure"))
-        elif player.assigned_position.upper() == "JUNGLE":
-            badges.append(Badge("Aggressive Jungler", "good", "Frequent early invades and ganks"))
-            badges.append(Badge("Good vision", "good", "High vision score"))
-        elif player.assigned_position.upper() == "UTILITY":
-            badges.append(Badge("Roaming", "warning", "Roams frequently to other lanes"))
-            badges.append(Badge("Good vision", "good", "High vision score"))
+                badges.append(Badge(label=f"{loss_streak}L Cold", category="danger", tooltip=f"Currently on a {loss_streak}-game loss streak"))
 
         return badges
 

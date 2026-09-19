@@ -5,12 +5,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.config import AppConfig, PLATFORM_TO_REGION
 from src.analytics import PlayerScoutingData, RecentMatchSummary, AnalyticsEngine
 
+from src.leagueofgraphs import LeagueOfGraphsClient
+
+
 class RiotApiClient:
-    """High-performance, rate-aware client for official Riot Games Web APIs."""
+    """High-performance, rate-aware client for official Riot Games Web APIs & LeagueOfGraphs."""
 
     def __init__(self, config: AppConfig):
         self.config = config
         self.session = requests.Session()
+        self.log_client = LeagueOfGraphsClient()
         self.session.headers.update({
             "User-Agent": "GlaiveOverlay/1.0",
             "Accept-Language": "en-US,en;q=0.9",
@@ -205,17 +209,26 @@ class RiotApiClient:
             level=raw_player.get("level", 1),
         )
 
+        # 1. Fetch LeagueOfGraphs / Porofessor Insights
+        log_data = self.log_client.fetch_player_insights(platform, game_name, tag_line, champ_name)
+        if log_data.get("server_rank"):
+            player.server_rank = log_data["server_rank"]
+        if log_data.get("champion_server_rank"):
+            player.champion_server_rank = log_data["champion_server_rank"]
+        if log_data.get("badges"):
+            player.badges.extend(log_data["badges"])
+
         if not self.config.riot_api_key or not tag_line:
             player.badges = AnalyticsEngine.compute_player_badges(player)
             return player
 
-        # 1. Resolve PUUID
+        # 2. Resolve PUUID via Riot API
         puuid = self.resolve_puuid(game_name, tag_line, platform)
         if not puuid:
             player.badges = AnalyticsEngine.compute_player_badges(player)
             return player
 
-        # 2. Get Rank
+        # 3. Get Rank & LP
         tier, rank, lp, wins, losses = self.fetch_ranked_stats(puuid, platform)
         player.tier = tier
         player.rank = rank
@@ -223,18 +236,19 @@ class RiotApiClient:
         player.ranked_wins = wins
         player.ranked_losses = losses
 
-        # 3. Get Recent Match History & Champ Stats
+        # 4. Get Recent Match History & Champ Stats
         recent, c_games, c_wins, avg_k, avg_d, avg_a = self.fetch_recent_matches(
             puuid, platform, champ_name, count=5
         )
         player.recent_matches = recent
         player.champion_games = c_games
         player.champion_wins = c_wins
-        player.recent_kills = avg_k
-        player.recent_deaths = avg_d
-        player.recent_assists = avg_a
+        if avg_k and avg_d and avg_a:
+            player.champion_kills_str = avg_k
+            player.champion_deaths_str = avg_d
+            player.champion_assists_str = avg_a
 
-        # 4. Compute tactical badges
+        # 5. Compute tactical badges
         player.badges = AnalyticsEngine.compute_player_badges(player)
         return player
 
