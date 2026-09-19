@@ -201,6 +201,10 @@ class LCUClient:
                         player.tag_line = s_data["tagLine"]
                     if s_data.get("profileIconId"):
                         player.profile_icon_id = s_data["profileIconId"]
+                        from src.asset_manager import AssetManager
+                        AssetManager().ensure_profile_icon(player.profile_icon_id)
+                from src.asset_manager import AssetManager
+                AssetManager().ensure_champion_icon(player.champion_name)
             except Exception:
                 pass
 

@@ -168,6 +168,47 @@ class AssetManager:
         threading.Thread(target=self._download_asset, args=(url, local_file, spell_file), daemon=True).start()
         return self._create_placeholder(spell_name[:1], size, radius)
 
+    def ensure_profile_icon(self, icon_id: int):
+        if not icon_id or icon_id <= 0:
+            return
+        local_file = self.profile_dir / f"{icon_id}.png"
+        if local_file.exists() and local_file.stat().st_size > 0:
+            return
+        url = f"{CDN_PROFILE_ICON_URL}/{icon_id}.png"
+        fallback_url = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/{icon_id}.jpg"
+        try:
+            r = requests.get(url, timeout=3)
+            if r.status_code == 200:
+                with open(local_file, "wb") as f:
+                    f.write(r.content)
+                return
+            r_fb = requests.get(fallback_url, timeout=3)
+            if r_fb.status_code == 200:
+                with open(local_file, "wb") as f:
+                    f.write(r_fb.content)
+        except Exception:
+            pass
+
+    def ensure_champion_icon(self, champ_name: str):
+        clean_name = self._normalize_champ_name(champ_name)
+        local_file = self.champ_dir / f"{clean_name}.png"
+        if local_file.exists() and local_file.stat().st_size > 0:
+            return
+        url = f"{CDN_CHAMPION_URL}/{clean_name}.png"
+        fallback_url = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/{clean_name.lower()}.png"
+        try:
+            r = requests.get(url, timeout=3)
+            if r.status_code == 200:
+                with open(local_file, "wb") as f:
+                    f.write(r.content)
+                return
+            r_fb = requests.get(fallback_url, timeout=3)
+            if r_fb.status_code == 200:
+                with open(local_file, "wb") as f:
+                    f.write(r_fb.content)
+        except Exception:
+            pass
+
     def get_profile_icon(self, icon_id: int, size: int = 34, radius: int = 0) -> QPixmap:
         cache_key = f"profile_{icon_id}_{size}_{radius}"
         if cache_key in self._pixmap_cache:
@@ -181,8 +222,13 @@ class AssetManager:
                 self._pixmap_cache[cache_key] = res
                 return res
 
-        url = f"{CDN_PROFILE_ICON_URL}/{icon_id}.png"
-        threading.Thread(target=self._download_asset, args=(url, local_file, str(icon_id)), daemon=True).start()
+        # Trigger fallback download
+        if str(icon_id) not in self._downloading_set:
+            self._downloading_set.add(str(icon_id))
+            url = f"{CDN_PROFILE_ICON_URL}/{icon_id}.png"
+            fallback_url = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/{icon_id}.jpg"
+            threading.Thread(target=self._download_asset_with_fallback, args=(url, fallback_url, local_file, str(icon_id)), daemon=True).start()
+
         return self._create_placeholder("P", size, radius)
 
     def get_ranked_crest(self, tier: str, size: int = 46) -> QPixmap:
