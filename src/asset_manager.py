@@ -72,8 +72,9 @@ class AssetManager:
             cls._instance.profile_dir = cls._instance.base_dir / "profiles"
             cls._instance.ranked_dir = cls._instance.base_dir / "ranked"
             cls._instance.roles_dir = cls._instance.base_dir / "roles"
+            cls._instance.mastery_dir = cls._instance.base_dir / "mastery"
 
-            for d in [cls._instance.champ_dir, cls._instance.spell_dir, cls._instance.profile_dir, cls._instance.ranked_dir, cls._instance.roles_dir]:
+            for d in [cls._instance.champ_dir, cls._instance.spell_dir, cls._instance.profile_dir, cls._instance.ranked_dir, cls._instance.roles_dir, cls._instance.mastery_dir]:
                 d.mkdir(parents=True, exist_ok=True)
 
         return cls._instance
@@ -174,6 +175,35 @@ class AssetManager:
                 return scaled
 
         return self._create_placeholder(t_clean[:2], size, 0)
+
+    def get_mastery_crest(self, level: int, size: int = 34) -> QPixmap:
+        """
+        Returns official high-res League of Legends Champion Mastery Crest:
+        - level 0: mastery_0.png
+        - level 1-9: mastery_{level}.png
+        - level >= 10: mastery_10.png (supreme crest used for levels 10+)
+        """
+        tier = min(10, max(0, level))
+        cache_key = f"mastery_{tier}_{size}"
+        if cache_key in self._pixmap_cache:
+            return self._pixmap_cache[cache_key]
+
+        local_file = self.mastery_dir / f"mastery_{tier}.png"
+        if local_file.exists():
+            raw = QPixmap(str(local_file))
+            if not raw.isNull():
+                scaled = raw.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self._pixmap_cache[cache_key] = scaled
+                return scaled
+
+        # Background download if not found locally
+        tag = f"mastery_{tier}"
+        if tag not in self._downloading_set:
+            self._downloading_set.add(tag)
+            url = f"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/mastery-{tier}.png" if tier > 0 else "https://raw.communitydragon.org/latest/game/assets/ux/mastery/legendarychampionmastery/masterycrest_level0.png"
+            threading.Thread(target=self._download_asset, args=(url, local_file, tag), daemon=True).start()
+
+        return self._create_placeholder(f"M{tier}", size, 0)
 
     ROLE_FILE_MAP = {
         "top": "top.png",

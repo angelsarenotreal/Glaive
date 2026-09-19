@@ -154,7 +154,41 @@ def ensure_ranked_assets():
                 print(f"Failed downloading {tier}: {e}")
 
 
+def ensure_mastery_assets():
+    mastery_dir = os.path.join("assets", "mastery")
+    os.makedirs(mastery_dir, exist_ok=True)
+    base = "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/"
+
+    # Mastery levels 1 to 10
+    for lvl in range(1, 11):
+        dst_path = os.path.join(mastery_dir, f"mastery_{lvl}.png")
+        if not os.path.exists(dst_path) or os.path.getsize(dst_path) < 1000:
+            try:
+                url = f"{base}mastery-{lvl}.png"
+                resp = requests.get(url, timeout=6)
+                if resp.status_code == 200:
+                    with open(dst_path, "wb") as f:
+                        f.write(resp.content)
+                    print(f"Downloaded official mastery crest: mastery_{lvl}.png")
+            except Exception as e:
+                print(f"Failed downloading mastery_{lvl}: {e}")
+
+    # Mastery 0
+    m0_path = os.path.join(mastery_dir, "mastery_0.png")
+    if not os.path.exists(m0_path) or os.path.getsize(m0_path) < 1000:
+        try:
+            url0 = "https://raw.communitydragon.org/latest/game/assets/ux/mastery/legendarychampionmastery/masterycrest_level0.png"
+            resp = requests.get(url0, timeout=6)
+            if resp.status_code == 200:
+                with open(m0_path, "wb") as f:
+                    f.write(resp.content)
+                print("Downloaded official mastery crest: mastery_0.png")
+        except Exception as e:
+            print(f"Failed downloading mastery_0: {e}")
+
+
 if __name__ == "__main__":
     generate_glaive_icon()
     ensure_role_assets()
     ensure_ranked_assets()
+    ensure_mastery_assets()

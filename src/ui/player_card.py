@@ -113,14 +113,32 @@ class PlayerCardWidget(QFrame):
         champ_icon.setFixedSize(46, 46)
         champ_row.addWidget(champ_icon)
 
-        # Mastery Level Badge
-        mastery_label = QLabel(f"LVL {self.player.champion_mastery_level}")
-        mastery_label.setStyleSheet(
-            "color: #cbd5e1; font-size: 9px; font-weight: 800; "
-            "background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255, 255, 255, 0.2); "
-            "border-radius: 0px; padding: 2px 5px;"
+        # Mastery Level & Official Metallic Crest
+        mastery_col = QVBoxLayout()
+        mastery_col.setSpacing(1)
+        mastery_col.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        mastery_crest_label = QLabel()
+        m_crest_pixmap = self.asset_mgr.get_mastery_crest(self.player.champion_mastery_level, size=28)
+        mastery_crest_label.setPixmap(m_crest_pixmap)
+        mastery_crest_label.setFixedSize(32, 24)
+        mastery_crest_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        mastery_col.addWidget(mastery_crest_label)
+
+        m_level_text = f"LVL {self.player.champion_mastery_level}"
+        mastery_level_label = QLabel(m_level_text)
+        mastery_level_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        mastery_level_label.setStyleSheet(
+            "color: #fbbf24; font-size: 9px; font-weight: 800; padding: 0px;"
         )
-        champ_row.addWidget(mastery_label)
+        mastery_col.addWidget(mastery_level_label)
+
+        pts_str = f"{self.player.champion_mastery_points:,} pts" if self.player.champion_mastery_points > 0 else ""
+        tip = f"Champion Mastery: Level {self.player.champion_mastery_level}" + (f" ({pts_str})" if pts_str else "")
+        mastery_crest_label.setToolTip(tip)
+        mastery_level_label.setToolTip(tip)
+
+        champ_row.addLayout(mastery_col)
         left_col.addLayout(champ_row)
 
         # KDA line: Green kills / Red deaths / Amber assists

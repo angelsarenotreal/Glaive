@@ -1,11 +1,14 @@
 import os
 import subprocess
 import sys
-from generate_assets import generate_glaive_icon
+from generate_assets import generate_glaive_icon, ensure_role_assets, ensure_ranked_assets, ensure_mastery_assets
 
 def build():
     print("[Build] Ensuring assets are generated...")
     generate_glaive_icon()
+    ensure_role_assets()
+    ensure_ranked_assets()
+    ensure_mastery_assets()
 
     if sys.platform == "win32":
         try:

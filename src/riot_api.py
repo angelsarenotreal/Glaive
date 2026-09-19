@@ -23,7 +23,9 @@ class RiotApiClient:
         # In-memory caches to guarantee zero duplicate network calls
         self._puuid_cache: Dict[str, str] = {}
         self._league_cache: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
+        self._mastery_cache: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
         self._match_details_cache: Dict[str, Dict[str, Any]] = {}
+        self._champ_name_to_id: Dict[str, int] = {}
 
     def _get_headers(self) -> Dict[str, str]:
         return {
@@ -106,6 +108,55 @@ class RiotApiClient:
                 return tier, rank, lp, wins, losses
 
         return "UNRANKED", "", 0, 0, 0
+
+    def _get_champion_id(self, champ_name: str) -> Optional[int]:
+        if not self._champ_name_to_id:
+            try:
+                r = self.session.get("https://ddragon.leagueoflegends.com/cdn/14.20.1/data/en_US/champion.json", timeout=4)
+                if r.status_code == 200:
+                    data = r.json().get("data", {})
+                    for c_id_str, c_info in data.items():
+                        self._champ_name_to_id[c_info.get("name", "").lower()] = int(c_info.get("key", 0))
+                        self._champ_name_to_id[c_id_str.lower()] = int(c_info.get("key", 0))
+            except Exception:
+                pass
+        
+        clean = champ_name.lower().replace(" ", "").replace("'", "").replace(".", "")
+        for k, v in self._champ_name_to_id.items():
+            if k.replace(" ", "").replace("'", "").replace(".", "") == clean:
+                return v
+        return None
+
+    def _find_mastery_for_champion(self, entries: List[Dict[str, Any]], champion_name: str) -> Tuple[int, int]:
+        c_id = self._get_champion_id(champion_name)
+        if c_id:
+            for e in entries:
+                if e.get("championId") == c_id:
+                    return e.get("championLevel", 1), e.get("championPoints", 0)
+        return 1, 0
+
+    def fetch_champion_mastery(self, puuid: str, platform: str, champion_name: str) -> Tuple[int, int]:
+        """Fetches champion mastery level and total points via CHAMPION-MASTERY-V4."""
+        now = time.time()
+        if puuid in self._mastery_cache:
+            cached_time, entries = self._mastery_cache[puuid]
+            if now - cached_time < 900:
+                return self._find_mastery_for_champion(entries, champion_name)
+
+        if not self.config.riot_api_key:
+            return 1, 0
+
+        url = f"https://{platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}"
+        try:
+            resp = self.session.get(url, headers=self._get_headers(), timeout=4)
+            if resp.status_code == 200:
+                entries = resp.json()
+                self._mastery_cache[puuid] = (now, entries)
+                return self._find_mastery_for_champion(entries, champion_name)
+        except Exception as e:
+            print(f"[RiotAPI] Error fetching champion mastery: {e}")
+
+        return 1, 0
 
     def fetch_recent_matches(
         self, puuid: str, platform: str, champion_name: str, count: int = 5
@@ -248,7 +299,14 @@ class RiotApiClient:
             player.champion_deaths_str = avg_d
             player.champion_assists_str = avg_a
 
-        # 5. Compute tactical badges
+        # 5. Get Official Champion Mastery (Level & Points)
+        m_level, m_points = self.fetch_champion_mastery(puuid, platform, champ_name)
+        if m_level > 0:
+            player.champion_mastery_level = m_level
+        if m_points > 0:
+            player.champion_mastery_points = m_points
+
+        # 6. Compute tactical badges
         player.badges = AnalyticsEngine.compute_player_badges(player)
         return player
 
