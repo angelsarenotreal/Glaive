@@ -71,8 +71,14 @@ def main():
         if info:
             overlay.update_available_signal.emit(info)
 
-    update_thread = threading.Thread(target=check_updates_background, daemon=True)
-    update_thread.start()
+    # Initial check on startup
+    threading.Thread(target=check_updates_background, daemon=True).start()
+
+    # Periodic check every 15 minutes
+    from PyQt6.QtCore import QTimer
+    update_timer = QTimer()
+    update_timer.timeout.connect(lambda: threading.Thread(target=check_updates_background, daemon=True).start())
+    update_timer.start(15 * 60 * 1000)  # 15 minutes
 
     # 7. Handle Live Match Callbacks
     def on_live_match(raw_players):

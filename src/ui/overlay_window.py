@@ -244,6 +244,7 @@ class GlaiveOverlayWindow(QWidget):
         self._pending_release = release_info
         self.banner_text.setText(f"🚀 Update Available: Glaive {release_info.tag_name} on GitHub")
         self.update_banner.show()
+        print(f"[AutoUpdater] Update available: {release_info.tag_name}. Banner displayed.")
 
     def _trigger_update_download(self):
         if not self._pending_release:
