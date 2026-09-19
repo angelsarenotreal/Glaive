@@ -133,6 +133,28 @@ def ensure_role_assets():
                     if not os.path.exists(dst_path):
                         shutil.copyfile(src_path, dst_path)
 
+
+def ensure_ranked_assets():
+    ranked_dir = os.path.join("assets", "ranked")
+    os.makedirs(ranked_dir, exist_ok=True)
+    base = "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/"
+    tiers = ["iron", "bronze", "silver", "gold", "platinum", "emerald", "diamond", "master", "grandmaster", "challenger", "unranked"]
+
+    for tier in tiers:
+        dst_path = os.path.join(ranked_dir, f"{tier}.png")
+        if not os.path.exists(dst_path) or os.path.getsize(dst_path) < 5000:
+            try:
+                url = f"{base}{tier}.png"
+                resp = requests.get(url, timeout=6)
+                if resp.status_code == 200:
+                    with open(dst_path, "wb") as f:
+                        f.write(resp.content)
+                    print(f"Downloaded official ranked crest: {tier}.png")
+            except Exception as e:
+                print(f"Failed downloading {tier}: {e}")
+
+
 if __name__ == "__main__":
     generate_glaive_icon()
     ensure_role_assets()
+    ensure_ranked_assets()
