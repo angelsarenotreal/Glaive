@@ -8,7 +8,7 @@ from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QFont, QPen, QB
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtWidgets import QWidget
 
-DATA_DRAGON_VERSION = "14.24.1"
+DATA_DRAGON_VERSION = "15.5.1"
 CDN_CHAMPION_URL = f"https://ddragon.leagueoflegends.com/cdn/{DATA_DRAGON_VERSION}/img/champion"
 CDN_SPELL_URL = f"https://ddragon.leagueoflegends.com/cdn/{DATA_DRAGON_VERSION}/img/spell"
 CDN_PROFILE_ICON_URL = f"https://ddragon.leagueoflegends.com/cdn/{DATA_DRAGON_VERSION}/img/profileicon"
@@ -93,6 +93,15 @@ class AssetManager:
             "Bel'Veth": "Belveth",
             "K'Sante": "KSante",
             "LeBlanc": "Leblanc",
+            "Locke": "Mel",
+            "Mel": "Mel",
+            "Ambessa": "Ambessa",
+            "Aurora": "Aurora",
+            "Smolder": "Smolder",
+            "Hwei": "Hwei",
+            "Briar": "Briar",
+            "Naafiri": "Naafiri",
+            "Milio": "Milio",
         }
         name = champ_name.strip()
         if name in mapping:
@@ -117,9 +126,28 @@ class AssetManager:
         if clean_name not in self._downloading_set:
             self._downloading_set.add(clean_name)
             url = f"{CDN_CHAMPION_URL}/{clean_name}.png"
-            threading.Thread(target=self._download_asset, args=(url, local_file, clean_name), daemon=True).start()
+            fallback_url = f"https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/{clean_name.lower()}.png"
+            threading.Thread(target=self._download_asset_with_fallback, args=(url, fallback_url, local_file, clean_name), daemon=True).start()
 
         return self._create_placeholder(clean_name[:2], size, radius)
+
+    def _download_asset_with_fallback(self, primary_url: str, fallback_url: str, local_path: Path, tag: str):
+        try:
+            resp = requests.get(primary_url, timeout=5)
+            if resp.status_code == 200:
+                with open(local_path, "wb") as f:
+                    f.write(resp.content)
+                return
+            
+            # Fallback
+            resp_fb = requests.get(fallback_url, timeout=5)
+            if resp_fb.status_code == 200:
+                with open(local_path, "wb") as f:
+                    f.write(resp_fb.content)
+        except Exception:
+            pass
+        finally:
+            self._downloading_set.discard(tag)
 
     def get_spell_icon(self, spell_name: str, size: int = 20, radius: int = 0) -> QPixmap:
         clean_name = spell_name.lower().strip()
@@ -350,17 +378,17 @@ class CircularGaugeWidget(QWidget):
             painter.drawText(QRectF(dial_x, dial_y + 24, dial_size, 16), Qt.AlignmentFlag.AlignCenter, self.header_text)
 
         # Subtext 1 (e.g. "2 Games" or "Main Role:")
-        painter.setPen(QColor(226, 232, 240))
+        painter.setPen(QColor(203, 213, 225))
         painter.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-        painter.drawText(QRectF(0, dial_size + 9, self.width(), 16), Qt.AlignmentFlag.AlignCenter, self.sub_text1)
+        painter.drawText(QRectF(0, dial_size + 8, self.width(), 16), Qt.AlignmentFlag.AlignCenter, self.sub_text1)
 
         # Subtext 2 (e.g. "(2 Wins)" or "Top")
         if self.sub_text2:
             if "Win" in self.sub_text2:
                 painter.setPen(QColor(56, 189, 248))  # Blue wins
             else:
-                painter.setPen(QColor(148, 163, 184))
-            painter.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-            painter.drawText(QRectF(0, dial_size + 25, self.width(), 16), Qt.AlignmentFlag.AlignCenter, self.sub_text2)
+                painter.setPen(QColor(248, 250, 252))  # Clean white for role name
+            painter.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+            painter.drawText(QRectF(0, dial_size + 24, self.width(), 16), Qt.AlignmentFlag.AlignCenter, self.sub_text2)
 
         painter.end()
