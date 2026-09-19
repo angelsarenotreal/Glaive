@@ -13,6 +13,7 @@ from src.game_poller import GamePoller
 from src.hotkey_listener import GlobalHotkeyListener
 from src.mock_data import get_mock_match_data
 from src.ui.overlay_window import GlaiveOverlayWindow
+from src.ui.tray_icon import GlaiveTrayIcon
 from src.updater import AutoUpdater
 from src import __version__
 
@@ -49,8 +50,9 @@ def main():
 
     cfg = config_mgr.config
 
-    # 3. Qt Application
+    # 3. Qt Application (Tray-resident, does not quit when overlay window is hidden)
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     app.setApplicationName("Glaive")
     app.setApplicationDisplayName("Glaive Overlay")
 
@@ -65,12 +67,30 @@ def main():
     # 5. Overlay Window
     overlay = GlaiveOverlayWindow(config_mgr)
 
-    # 6. Background Auto-Updater Check
+    # 6. System Tray Icon (Resident in Windows Tray)
+    tray_icon = GlaiveTrayIcon()
+    tray_icon.show()
+    tray_icon.toggle_overlay_requested.connect(overlay.toggle_visibility_signal.emit)
+    tray_icon.open_settings_requested.connect(overlay.open_settings)
+
+    def on_tray_mock():
+        mock_players = get_mock_match_data()
+        overlay.display_players(mock_players)
+        overlay.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · GRANDMASTER LOBBY")
+        if not overlay.isVisible():
+            overlay.show()
+
+    tray_icon.trigger_mock_requested.connect(on_tray_mock)
+
+    # 7. Background Auto-Updater Check
     updater = AutoUpdater()
     def check_updates_background():
         info = updater.check_for_updates()
         if info:
             overlay.update_available_signal.emit(info)
+            tray_icon.notify("Update Available", f"Glaive {info.tag_name} is available on GitHub.")
+
+    tray_icon.check_updates_requested.connect(lambda: threading.Thread(target=check_updates_background, daemon=True).start())
 
     # Initial check on startup
     threading.Thread(target=check_updates_background, daemon=True).start()
@@ -81,9 +101,10 @@ def main():
     update_timer.timeout.connect(lambda: threading.Thread(target=check_updates_background, daemon=True).start())
     update_timer.start(15 * 60 * 1000)  # 15 minutes
 
-    # 7. Handle Live Match Callbacks
+    # 8. Handle Live Match Callbacks
     def on_live_match(raw_players):
         overlay.update_status_signal.emit("● SCOUTING PLAYERS VIA RIOT API...", "LIVE MATCH DETECTED")
+        tray_icon.notify("Live Match Detected", "Scouting 10 players on Summoner's Rift...")
         scouted_players = api_client.scout_all_players(raw_players, cfg.default_platform)
         overlay.update_players_signal.emit(scouted_players)
         overlay.update_status_signal.emit("● LIVE MATCH ACTIVE", "SUMMONER'S RIFT · LIVE SCOUTING")
@@ -93,22 +114,22 @@ def main():
     def on_match_ended():
         overlay.update_status_signal.emit("● WAITING FOR MATCH (PORT 2999)", "LIVE SCOUTING REPORT")
 
-    # 8. Start Game Poller (Port 2999)
+    # 9. Start Game Poller (Port 2999)
     poller = GamePoller(on_match_found=on_live_match, on_match_ended=on_match_ended)
     poller.start()
 
-    # 9. Start Global Hotkey Listener (Ctrl + X)
+    # 10. Start Global Hotkey Listener (Ctrl + X)
     def trigger_hotkey():
         overlay.toggle_visibility_signal.emit()
 
     hotkey_thread = GlobalHotkeyListener(cfg.hotkey, trigger_hotkey)
     hotkey_thread.start()
 
-    # 10. Initial Display State
+    # 11. Initial Display State
     if cfg.mock_mode or args.mock:
         mock_players = get_mock_match_data()
         overlay.display_players(mock_players)
-        overlay.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · DIAMOND I LOBBY")
+        overlay.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · GRANDMASTER LOBBY")
     else:
         overlay.set_status("● WAITING FOR MATCH (PORT 2999)", "LIVE SCOUTING REPORT")
 
@@ -119,10 +140,11 @@ def main():
     def on_exit():
         poller.stop()
         hotkey_thread.stop()
+        tray_icon.hide()
 
     app.aboutToQuit.connect(on_exit)
 
-    print(f"[Glaive] App running. Press {cfg.hotkey.upper()} to toggle overlay.")
+    print(f"[Glaive] App running resident in system tray. Press {cfg.hotkey.upper()} to toggle overlay.")
     sys.exit(app.exec())
 
 

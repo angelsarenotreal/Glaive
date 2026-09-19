@@ -7,6 +7,12 @@ def build():
     print("[Build] Ensuring assets are generated...")
     generate_glaive_icon()
 
+    if sys.platform == "win32":
+        try:
+            subprocess.run(["taskkill", "/f", "/im", "Glaive.exe"], capture_output=True)
+        except Exception:
+            pass
+
     print("[Build] Running PyInstaller to package Glaive.exe...")
     cmd = [
         sys.executable,
