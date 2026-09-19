@@ -104,7 +104,7 @@ class GlaiveOverlayWindow(QWidget):
         self.update_banner = QFrame()
         self.update_banner.setStyleSheet(
             "background-color: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); "
-            "border-radius: 6px; padding: 4px 8px;"
+            "border-radius: 0px; padding: 4px 8px;"
         )
         self.update_banner.hide()
         banner_layout = QHBoxLayout(self.update_banner)
@@ -116,7 +116,7 @@ class GlaiveOverlayWindow(QWidget):
         banner_layout.addStretch()
 
         self.update_btn = QPushButton("Update & Restart")
-        self.update_btn.setStyleSheet("background-color: #38bdf8; color: #000000; font-weight: 800; padding: 3px 10px;")
+        self.update_btn.setStyleSheet("background-color: #38bdf8; color: #000000; font-weight: 800; padding: 3px 10px; border-radius: 0px;")
         self.update_btn.clicked.connect(self._trigger_update_download)
         banner_layout.addWidget(self.update_btn)
 
@@ -191,7 +191,7 @@ class GlaiveOverlayWindow(QWidget):
 
         # --- Top Row: Blue Team (5 Cards) ---
         blue_team_bar = QFrame()
-        blue_team_bar.setStyleSheet("background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 4px; padding: 2px 6px;")
+        blue_team_bar.setStyleSheet("background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 0px; padding: 2px 6px;")
         blue_bar_layout = QHBoxLayout(blue_team_bar)
         blue_bar_layout.setContentsMargins(6, 2, 6, 2)
         blue_team_title = QLabel("ALLY TEAM (BLUE)")
@@ -209,7 +209,7 @@ class GlaiveOverlayWindow(QWidget):
 
         # --- Bottom Row: Red Team (5 Cards) ---
         red_team_bar = QFrame()
-        red_team_bar.setStyleSheet("background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 4px; padding: 2px 6px;")
+        red_team_bar.setStyleSheet("background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 0px; padding: 2px 6px;")
         red_bar_layout = QHBoxLayout(red_team_bar)
         red_bar_layout.setContentsMargins(6, 2, 6, 2)
         red_team_title = QLabel("ENEMY TEAM (RED)")

@@ -33,7 +33,7 @@ class PlayerCardWidget(QFrame):
 
         # Circular Profile Icon (36x36)
         profile_label = QLabel()
-        profile_pixmap = self.asset_mgr.get_profile_icon(self.player.profile_icon_id, size=36)
+        profile_pixmap = self.asset_mgr.get_profile_icon(self.player.profile_icon_id, size=36, radius=0)
         profile_label.setPixmap(profile_pixmap)
         profile_label.setFixedSize(36, 36)
         header_layout.addWidget(profile_label)
@@ -80,10 +80,10 @@ class PlayerCardWidget(QFrame):
         spells_col = QVBoxLayout()
         spells_col.setSpacing(3)
         sp1 = QLabel()
-        sp1.setPixmap(self.asset_mgr.get_spell_icon(self.player.spell1_name, size=20, radius=3))
+        sp1.setPixmap(self.asset_mgr.get_spell_icon(self.player.spell1_name, size=20, radius=0))
         sp1.setFixedSize(20, 20)
         sp2 = QLabel()
-        sp2.setPixmap(self.asset_mgr.get_spell_icon(self.player.spell2_name, size=20, radius=3))
+        sp2.setPixmap(self.asset_mgr.get_spell_icon(self.player.spell2_name, size=20, radius=0))
         sp2.setFixedSize(20, 20)
         spells_col.addWidget(sp1)
         spells_col.addWidget(sp2)
@@ -91,7 +91,7 @@ class PlayerCardWidget(QFrame):
 
         # Champion Square Icon (46x46)
         champ_icon = QLabel()
-        champ_icon.setPixmap(self.asset_mgr.get_champion_icon(self.player.champion_name, size=46, radius=6))
+        champ_icon.setPixmap(self.asset_mgr.get_champion_icon(self.player.champion_name, size=46, radius=0))
         champ_icon.setFixedSize(46, 46)
         champ_row.addWidget(champ_icon)
 
@@ -100,7 +100,7 @@ class PlayerCardWidget(QFrame):
         mastery_label.setStyleSheet(
             "color: #cbd5e1; font-size: 9px; font-weight: 800; "
             "background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255, 255, 255, 0.2); "
-            "border-radius: 4px; padding: 2px 5px;"
+            "border-radius: 0px; padding: 2px 5px;"
         )
         champ_row.addWidget(mastery_label)
         champ_row.addStretch()
@@ -245,35 +245,35 @@ class PlayerCardWidget(QFrame):
             if badge.tooltip:
                 b_label.setToolTip(badge.tooltip)
 
-            # Apply Porofessor colored border styles
+            # Apply Porofessor colored border styles (Sharp 0px corners)
             if badge.category in ["good", "highlight"]:
                 # Cyan/Emerald border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #10b981; color: #34d399; background-color: rgba(16, 185, 129, 0.12); "
-                    "border-radius: 4px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
+                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
                 )
             elif badge.category == "warning":
                 # Amber/Gold border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #f59e0b; color: #fbbf24; background-color: rgba(245, 158, 11, 0.12); "
-                    "border-radius: 4px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
+                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
                 )
             elif badge.category == "danger":
                 # Red border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #ef4444; color: #f87171; background-color: rgba(239, 68, 68, 0.12); "
-                    "border-radius: 4px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
+                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
                 )
             elif badge.category == "pro":
                 # Electric Blue border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #38bdf8; color: #38bdf8; background-color: rgba(56, 189, 248, 0.16); "
-                    "border-radius: 4px; padding: 3px 8px; font-size: 10px; font-weight: 800;"
+                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 800;"
                 )
             else:
                 b_label.setStyleSheet(
                     "border: 1px solid rgba(255, 255, 255, 0.2); color: #e2e8f0; background-color: rgba(255, 255, 255, 0.06); "
-                    "border-radius: 4px; padding: 3px 8px; font-size: 10px; font-weight: 600;"
+                    "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 600;"
                 )
 
             is_long = len(badge.label) >= 15

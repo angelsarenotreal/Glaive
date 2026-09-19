@@ -41,13 +41,13 @@ class GlaiveTrayIcon(QSystemTrayIcon):
             QMenu {
                 background-color: #111722;
                 color: #f8fafc;
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 0px;
                 padding: 4px;
             }
             QMenu::item {
                 padding: 6px 20px 6px 12px;
-                border-radius: 4px;
+                border-radius: 0px;
                 font-size: 11px;
                 font-weight: 600;
             }

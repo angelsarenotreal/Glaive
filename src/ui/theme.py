@@ -10,15 +10,14 @@ QWidget#GlaiveOverlay {
 
 QFrame#MainContainer {
     background-color: #0c1017;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0px;
 }
 
 QFrame#HeaderFrame {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     background-color: #111722;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
+    border-radius: 0px;
 }
 
 QLabel#AppTitle {
@@ -36,14 +35,14 @@ QLabel#StatusLabel {
 
 QFrame#PlayerCard {
     background-color: #151d27;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0px;
     padding: 8px;
 }
 
 QFrame#PlayerCard:hover {
     background-color: #1c2634;
-    border: 1px solid rgba(56, 189, 248, 0.4);
+    border: 1px solid rgba(56, 189, 248, 0.5);
 }
 
 QLabel#PlayerName {
@@ -85,9 +84,9 @@ QLabel#StatLabel {
 /* Buttons */
 QPushButton {
     background-color: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     color: #f8fafc;
-    border-radius: 6px;
+    border-radius: 0px;
     padding: 5px 12px;
     font-size: 11px;
     font-weight: 600;
@@ -95,7 +94,7 @@ QPushButton {
 
 QPushButton:hover {
     background-color: rgba(255, 255, 255, 0.16);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 QPushButton:pressed {
@@ -107,7 +106,7 @@ QPushButton#IconButton {
     border: none;
     color: #94a3b8;
     padding: 4px;
-    border-radius: 4px;
+    border-radius: 0px;
 }
 
 QPushButton#IconButton:hover {
@@ -118,15 +117,15 @@ QPushButton#IconButton:hover {
 /* Inputs & Form */
 QLineEdit, QComboBox {
     background-color: #151d27;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0px;
     color: #f8fafc;
     padding: 6px 10px;
     font-size: 11px;
 }
 
 QLineEdit:focus, QComboBox:focus {
-    border: 1px solid rgba(56, 189, 248, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.7);
 }
 
 QComboBox::drop-down {
@@ -136,7 +135,7 @@ QComboBox::drop-down {
 
 QComboBox QAbstractItemView {
     background-color: #151d27;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     color: #f8fafc;
     selection-background-color: rgba(56, 189, 248, 0.2);
 }

@@ -98,7 +98,7 @@ class AssetManager:
             return mapping[name]
         return name.replace(" ", "").replace("'", "").replace(".", "")
 
-    def get_champion_icon(self, champ_name: str, size: int = 46, radius: int = 6) -> QPixmap:
+    def get_champion_icon(self, champ_name: str, size: int = 46, radius: int = 0) -> QPixmap:
         clean_name = self._normalize_champ_name(champ_name)
         cache_key = f"champ_{clean_name}_{size}_{radius}"
         if cache_key in self._pixmap_cache:
@@ -120,7 +120,7 @@ class AssetManager:
 
         return self._create_placeholder(clean_name[:2], size, radius)
 
-    def get_spell_icon(self, spell_name: str, size: int = 20, radius: int = 3) -> QPixmap:
+    def get_spell_icon(self, spell_name: str, size: int = 20, radius: int = 0) -> QPixmap:
         clean_name = spell_name.lower().strip()
         spell_file = SPELL_MAPPING.get(clean_name, "SummonerFlash.png")
         cache_key = f"spell_{spell_file}_{size}_{radius}"
@@ -139,8 +139,8 @@ class AssetManager:
         threading.Thread(target=self._download_asset, args=(url, local_file, spell_file), daemon=True).start()
         return self._create_placeholder(spell_name[:1], size, radius)
 
-    def get_profile_icon(self, icon_id: int, size: int = 34) -> QPixmap:
-        cache_key = f"profile_{icon_id}_{size}"
+    def get_profile_icon(self, icon_id: int, size: int = 34, radius: int = 0) -> QPixmap:
+        cache_key = f"profile_{icon_id}_{size}_{radius}"
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
@@ -148,13 +148,13 @@ class AssetManager:
         if local_file.exists():
             raw = QPixmap(str(local_file))
             if not raw.isNull():
-                res = self._create_rounded_pixmap(raw, size, radius=size // 2)
+                res = self._create_rounded_pixmap(raw, size, radius=radius)
                 self._pixmap_cache[cache_key] = res
                 return res
 
         url = f"{CDN_PROFILE_ICON_URL}/{icon_id}.png"
         threading.Thread(target=self._download_asset, args=(url, local_file, str(icon_id)), daemon=True).start()
-        return self._create_placeholder("P", size, size // 2)
+        return self._create_placeholder("P", size, radius)
 
     def get_ranked_crest(self, tier: str, size: int = 46) -> QPixmap:
         t_clean = tier.lower().strip()
@@ -173,7 +173,7 @@ class AssetManager:
                 self._pixmap_cache[cache_key] = scaled
                 return scaled
 
-        return self._create_placeholder(t_clean[:2], size, 4)
+        return self._create_placeholder(t_clean[:2], size, 0)
 
     def get_role_icon(self, role: str, size: int = 24) -> QPixmap:
         r_clean = role.lower().strip().replace(" ", "_")

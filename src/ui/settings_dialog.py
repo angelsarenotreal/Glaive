@@ -42,7 +42,7 @@ class SettingsDialog(QDialog):
         ver_badge = QLabel(f"v{__version__}")
         ver_badge.setStyleSheet(
             "color: #94a3b8; font-size: 11px; font-weight: 700; "
-            "background: rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 2px 6px;"
+            "background: rgba(255, 255, 255, 0.08); border-radius: 0px; padding: 2px 6px;"
         )
         title_row.addWidget(ver_badge)
         title_row.addStretch()
@@ -120,7 +120,7 @@ class SettingsDialog(QDialog):
         update_frame = QFrame()
         update_frame.setStyleSheet(
             "background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); "
-            "border-radius: 6px; padding: 6px;"
+            "border-radius: 0px; padding: 6px;"
         )
         update_layout = QHBoxLayout(update_frame)
         update_layout.setContentsMargins(8, 6, 8, 6)
