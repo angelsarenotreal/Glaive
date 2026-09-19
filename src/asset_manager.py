@@ -1,11 +1,12 @@
 import os
+import sys
 import threading
 import requests
+from pathlib import Path
 from typing import Dict, Tuple, Optional
-from PIL import Image, ImageDraw
 from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QFont, QPen, QBrush
-from PyQt6.QtCore import Qt, QRectF, QPointF
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtWidgets import QWidget
 
 DATA_DRAGON_VERSION = "14.24.1"
 CDN_CHAMPION_URL = f"https://ddragon.leagueoflegends.com/cdn/{DATA_DRAGON_VERSION}/img/champion"
@@ -26,14 +27,36 @@ SPELL_MAPPING = {
 }
 
 
+def get_base_asset_dir() -> Path:
+    """Returns the correct path to assets directory whether frozen (PyInstaller) or running from source."""
+    # 1. If running as PyInstaller onefile bundle
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        meipass_assets = Path(sys._MEIPASS) / "assets"
+        if meipass_assets.exists():
+            return meipass_assets
+
+    # 2. If running from repository root / dev mode
+    dev_assets = Path(__file__).resolve().parent.parent / "assets"
+    if dev_assets.exists():
+        return dev_assets
+
+    # 3. If running next to executable
+    exe_assets = Path(sys.executable).parent / "assets"
+    if exe_assets.exists():
+        return exe_assets
+
+    # 4. Fallback to AppData writable directory
+    appdata_assets = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "Glaive" / "assets"
+    appdata_assets.mkdir(parents=True, exist_ok=True)
+    return appdata_assets
+
+
 class AssetManager:
     """
-    Manages downloading, local disk caching, and rendering of all visual game assets:
-    - Champion Square Icons
-    - Summoner Spells
-    - Profile Icons
-    - Ranked Tier Emblems / Crests
-    - Lane / Role Emblems
+    Bulletproof Game Asset Manager for League of Legends:
+    - Loads bundled assets from disk with 0ms latency.
+    - Caches runtime downloads to persistent disk storage.
+    - Masks and renders rounded portraits, spell icons, ranked crests, and circular gauges.
     """
 
     _instance = None
@@ -43,73 +66,17 @@ class AssetManager:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(AssetManager, cls).__new__(cls)
-            cls._instance._init_cache_dirs()
+            cls._instance.base_dir = get_base_asset_dir()
+            cls._instance.champ_dir = cls._instance.base_dir / "champions"
+            cls._instance.spell_dir = cls._instance.base_dir / "spells"
+            cls._instance.profile_dir = cls._instance.base_dir / "profiles"
+            cls._instance.ranked_dir = cls._instance.base_dir / "ranked"
+            cls._instance.roles_dir = cls._instance.base_dir / "roles"
+
+            for d in [cls._instance.champ_dir, cls._instance.spell_dir, cls._instance.profile_dir, cls._instance.ranked_dir, cls._instance.roles_dir]:
+                d.mkdir(parents=True, exist_ok=True)
+
         return cls._instance
-
-    def _init_cache_dirs(self):
-        self.champ_dir = os.path.abspath("assets/champions")
-        self.spell_dir = os.path.abspath("assets/spells")
-        self.profile_dir = os.path.abspath("assets/profiles")
-        self.ranked_dir = os.path.abspath("assets/ranked")
-        self.roles_dir = os.path.abspath("assets/roles")
-
-        for d in [self.champ_dir, self.spell_dir, self.profile_dir, self.ranked_dir, self.roles_dir]:
-            os.makedirs(d, exist_ok=True)
-
-        self._ensure_vector_assets()
-
-    def _ensure_vector_assets(self):
-        """Generates crisp vector ranked emblems and role icons if not already present."""
-        # 1. Generate Ranked Crests (Challenger, Grandmaster, Master, Diamond, Emerald, Plat, Gold, Silver, Bronze, Iron)
-        tiers = {
-            "challenger": ((218, 165, 32), (56, 189, 248), "CH"),
-            "grandmaster": ((239, 68, 68), (185, 28, 28), "GM"),
-            "master": ((168, 85, 247), (126, 34, 206), "M"),
-            "diamond": ((56, 189, 248), (30, 64, 175), "D"),
-            "emerald": ((16, 185, 129), (6, 95, 70), "E"),
-            "platinum": ((45, 212, 191), (19, 78, 74), "P"),
-            "gold": ((245, 158, 11), (180, 83, 9), "G"),
-            "silver": ((148, 163, 184), (71, 85, 105), "S"),
-            "bronze": ((180, 83, 9), (120, 53, 15), "B"),
-            "iron": ((100, 116, 139), (51, 65, 85), "I"),
-            "unranked": ((71, 85, 105), (30, 41, 59), "U"),
-        }
-
-        for tier, (c1, c2, letter) in tiers.items():
-            path = os.path.join(self.ranked_dir, f"{tier}.png")
-            if not os.path.exists(path):
-                img = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
-                draw = ImageDraw.Draw(img)
-                # Draw winged shield
-                points = [(64, 10), (110, 35), (105, 85), (64, 118), (23, 85), (18, 35)]
-                draw.polygon(points, fill=c1, outline=(255, 255, 255, 180), width=3)
-                # Inner crest
-                inner_points = [(64, 25), (95, 45), (90, 80), (64, 102), (38, 80), (33, 45)]
-                draw.polygon(inner_points, fill=c2)
-                # Wings
-                draw.line([(18, 35), (2, 20), (10, 60), (23, 85)], fill=c1, width=4)
-                draw.line([(110, 35), (126, 20), (118, 60), (105, 85)], fill=c1, width=4)
-                img.save(path, format="PNG")
-
-        # 2. Generate Role Icons (Top, Jungle, Mid, AD Carry, Support)
-        roles = ["top", "jungle", "mid", "ad carry", "support"]
-        for role in roles:
-            path = os.path.join(self.roles_dir, f"{role.replace(' ', '_')}.png")
-            if not os.path.exists(path):
-                img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-                draw = ImageDraw.Draw(img)
-                draw.ellipse([(8, 8), (56, 56)], fill=(15, 23, 42, 220), outline=(56, 189, 248, 180), width=2)
-                if role == "top":
-                    draw.polygon([(32, 16), (46, 30), (38, 48), (26, 48), (18, 30)], fill=(56, 189, 248, 255))
-                elif role == "jungle":
-                    draw.polygon([(32, 14), (40, 28), (48, 22), (40, 48), (24, 48), (16, 22), (24, 28)], fill=(56, 189, 248, 255))
-                elif role == "mid":
-                    draw.rectangle([(22, 22), (42, 42)], fill=(56, 189, 248, 255))
-                elif role == "ad carry":
-                    draw.polygon([(32, 16), (48, 44), (32, 38), (16, 44)], fill=(56, 189, 248, 255))
-                elif role == "support":
-                    draw.ellipse([(20, 20), (44, 44)], fill=(56, 189, 248, 255))
-                img.save(path, format="PNG")
 
     def _normalize_champ_name(self, champ_name: str) -> str:
         mapping = {
@@ -131,82 +98,82 @@ class AssetManager:
             return mapping[name]
         return name.replace(" ", "").replace("'", "").replace(".", "")
 
-    def get_champion_icon(self, champ_name: str, size: int = 42, radius: int = 6) -> QPixmap:
+    def get_champion_icon(self, champ_name: str, size: int = 46, radius: int = 6) -> QPixmap:
         clean_name = self._normalize_champ_name(champ_name)
         cache_key = f"champ_{clean_name}_{size}_{radius}"
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
-        local_file = os.path.join(self.champ_dir, f"{clean_name}.png")
-        if os.path.exists(local_file):
-            raw = QPixmap(local_file)
+        local_file = self.champ_dir / f"{clean_name}.png"
+        if local_file.exists():
+            raw = QPixmap(str(local_file))
             if not raw.isNull():
                 res = self._create_rounded_pixmap(raw, size, radius)
                 self._pixmap_cache[cache_key] = res
                 return res
 
-        # Download in background
+        # Download in background if not found
         if clean_name not in self._downloading_set:
             self._downloading_set.add(clean_name)
-            threading.Thread(target=self._download_asset, args=(f"{CDN_CHAMPION_URL}/{clean_name}.png", local_file, clean_name), daemon=True).start()
+            url = f"{CDN_CHAMPION_URL}/{clean_name}.png"
+            threading.Thread(target=self._download_asset, args=(url, local_file, clean_name), daemon=True).start()
 
         return self._create_placeholder(clean_name[:2], size, radius)
 
-    def get_spell_icon(self, spell_name: str, size: int = 18, radius: int = 3) -> QPixmap:
+    def get_spell_icon(self, spell_name: str, size: int = 20, radius: int = 3) -> QPixmap:
         clean_name = spell_name.lower().strip()
         spell_file = SPELL_MAPPING.get(clean_name, "SummonerFlash.png")
         cache_key = f"spell_{spell_file}_{size}_{radius}"
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
-        local_file = os.path.join(self.spell_dir, spell_file)
-        if os.path.exists(local_file):
-            raw = QPixmap(local_file)
+        local_file = self.spell_dir / spell_file
+        if local_file.exists():
+            raw = QPixmap(str(local_file))
             if not raw.isNull():
                 res = self._create_rounded_pixmap(raw, size, radius)
                 self._pixmap_cache[cache_key] = res
                 return res
 
-        # Download spell
-        threading.Thread(target=self._download_asset, args=(f"{CDN_SPELL_URL}/{spell_file}", local_file, spell_file), daemon=True).start()
+        url = f"{CDN_SPELL_URL}/{spell_file}"
+        threading.Thread(target=self._download_asset, args=(url, local_file, spell_file), daemon=True).start()
         return self._create_placeholder(spell_name[:1], size, radius)
 
-    def get_profile_icon(self, icon_id: int, size: int = 32) -> QPixmap:
+    def get_profile_icon(self, icon_id: int, size: int = 34) -> QPixmap:
         cache_key = f"profile_{icon_id}_{size}"
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
-        local_file = os.path.join(self.profile_dir, f"{icon_id}.png")
-        if os.path.exists(local_file):
-            raw = QPixmap(local_file)
+        local_file = self.profile_dir / f"{icon_id}.png"
+        if local_file.exists():
+            raw = QPixmap(str(local_file))
             if not raw.isNull():
                 res = self._create_rounded_pixmap(raw, size, radius=size // 2)
                 self._pixmap_cache[cache_key] = res
                 return res
 
-        # Download profile icon
-        threading.Thread(target=self._download_asset, args=(f"{CDN_PROFILE_ICON_URL}/{icon_id}.png", local_file, str(icon_id)), daemon=True).start()
+        url = f"{CDN_PROFILE_ICON_URL}/{icon_id}.png"
+        threading.Thread(target=self._download_asset, args=(url, local_file, str(icon_id)), daemon=True).start()
         return self._create_placeholder("P", size, size // 2)
 
-    def get_ranked_crest(self, tier: str, size: int = 40) -> QPixmap:
+    def get_ranked_crest(self, tier: str, size: int = 46) -> QPixmap:
         t_clean = tier.lower().strip()
-        if t_clean in ["master", "grandmaster", "challenger", "diamond", "emerald", "platinum", "gold", "silver", "bronze", "iron"]:
-            tier_key = t_clean
-        else:
-            tier_key = "unranked"
-
-        cache_key = f"rank_{tier_key}_{size}"
+        cache_key = f"rank_{t_clean}_{size}"
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
-        local_file = os.path.join(self.ranked_dir, f"{tier_key}.png")
-        if os.path.exists(local_file):
-            raw = QPixmap(local_file)
-            scaled = raw.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            self._pixmap_cache[cache_key] = scaled
-            return scaled
+        local_file = self.ranked_dir / f"{t_clean}.png"
+        if not local_file.exists():
+            local_file = self.ranked_dir / "unranked.png"
 
-        return self._create_placeholder(tier_key[:2], size, 4)
+        if local_file.exists():
+            raw = QPixmap(str(local_file))
+            if not raw.isNull():
+                scaled = raw.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self._pixmap_cache[cache_key] = scaled
+                return scaled
+
+        return self._create_placeholder(t_clean[:2], size, 4)
 
     def get_role_icon(self, role: str, size: int = 24) -> QPixmap:
         r_clean = role.lower().strip().replace(" ", "_")
@@ -214,18 +181,19 @@ class AssetManager:
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
-        local_file = os.path.join(self.roles_dir, f"{r_clean}.png")
-        if os.path.exists(local_file):
-            raw = QPixmap(local_file)
-            scaled = raw.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            self._pixmap_cache[cache_key] = scaled
-            return scaled
+        local_file = self.roles_dir / f"{r_clean}.png"
+        if local_file.exists():
+            raw = QPixmap(str(local_file))
+            if not raw.isNull():
+                scaled = raw.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self._pixmap_cache[cache_key] = scaled
+                return scaled
 
         return self._create_placeholder(role[:1], size, size // 2)
 
-    def _download_asset(self, url: str, local_path: str, tag: str):
+    def _download_asset(self, url: str, local_path: Path, tag: str):
         try:
-            resp = requests.get(url, timeout=5)
+            resp = requests.get(url, timeout=6)
             if resp.status_code == 200:
                 with open(local_path, "wb") as f:
                     f.write(resp.content)
@@ -248,7 +216,7 @@ class AssetManager:
         painter.setClipPath(path)
         painter.drawPixmap(0, 0, scaled)
 
-        painter.setPen(QPen(QColor(255, 255, 255, 45), 1.2))
+        painter.setPen(QPen(QColor(255, 255, 255, 60), 1.5))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(QRectF(0.5, 0.5, size - 1, size - 1), radius, radius)
         painter.end()
@@ -259,11 +227,11 @@ class AssetManager:
         out.fill(Qt.GlobalColor.transparent)
         painter = QPainter(out)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.setPen(QPen(QColor(255, 255, 255, 25), 1))
-        painter.setBrush(QColor(20, 24, 32))
+        painter.setPen(QPen(QColor(255, 255, 255, 40), 1))
+        painter.setBrush(QColor(20, 26, 36))
         painter.drawRoundedRect(QRectF(0, 0, size, size), radius, radius)
-        painter.setPen(QColor(160, 175, 190))
-        painter.setFont(QFont("Segoe UI", max(7, int(size * 0.35)), QFont.Weight.Bold))
+        painter.setPen(QColor(180, 195, 210))
+        painter.setFont(QFont("Segoe UI", max(8, int(size * 0.35)), QFont.Weight.Bold))
         painter.drawText(QRectF(0, 0, size, size), Qt.AlignmentFlag.AlignCenter, text.upper())
         painter.end()
         return out
@@ -292,7 +260,7 @@ class CircularGaugeWidget(QWidget):
         self.sub_text2 = sub_text2
         self.ring_color = ring_color
         self.center_pixmap = center_pixmap
-        self.setFixedSize(76, 88)
+        self.setFixedSize(88, 98)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -300,40 +268,41 @@ class CircularGaugeWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
         # 1. Outer Ring Area
-        dial_size = 44
+        dial_size = 50
         dial_x = (self.width() - dial_size) / 2
         dial_y = 2
         rect = QRectF(dial_x, dial_y, dial_size, dial_size)
 
         # Background track
-        painter.setPen(QPen(QColor(255, 255, 255, 20), 3.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        painter.setBrush(QColor(15, 19, 26, 200))
+        painter.setPen(QPen(QColor(255, 255, 255, 25), 4.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setBrush(QColor(15, 20, 28, 255))
         painter.drawEllipse(rect)
 
-        # Foreground Progress Arc (90 degrees is top, span angle is negative for clockwise)
+        # Foreground Progress Arc
         span_angle = int(-(self.percentage / 100.0) * 360 * 16)
-        painter.setPen(QPen(self.ring_color, 3.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setPen(QPen(self.ring_color, 4.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.drawArc(rect, 90 * 16, span_angle)
 
-        # Center Content: Icon or Percentage Text
+        # Center Content: Role Icon OR Percentage Text
         if self.center_pixmap and not self.center_pixmap.isNull():
-            icon_size = 20
+            icon_size = 24
             ix = dial_x + (dial_size - icon_size) / 2
             iy = dial_y + (dial_size - icon_size) / 2
             painter.drawPixmap(int(ix), int(iy), self.center_pixmap.scaled(icon_size, icon_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else:
+            pct_str = f"{self.percentage:.1f}%" if (self.percentage % 1 != 0 and self.percentage > 0) else f"{int(self.percentage)}%"
             painter.setPen(QColor(248, 250, 252))
-            painter.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
-            painter.drawText(QRectF(dial_x, dial_y + 6, dial_size, 14), Qt.AlignmentFlag.AlignCenter, f"{self.percentage:.1f}%" if self.percentage % 1 != 0 else f"{int(self.percentage)}%")
-            
+            painter.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+            painter.drawText(QRectF(dial_x, dial_y + 8, dial_size, 16), Qt.AlignmentFlag.AlignCenter, pct_str)
+
             painter.setPen(QColor(148, 163, 184))
-            painter.setFont(QFont("Segoe UI", 7, QFont.Weight.DemiBold))
-            painter.drawText(QRectF(dial_x, dial_y + 20, dial_size, 14), Qt.AlignmentFlag.AlignCenter, self.header_text)
+            painter.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+            painter.drawText(QRectF(dial_x, dial_y + 24, dial_size, 16), Qt.AlignmentFlag.AlignCenter, self.header_text)
 
         # Subtext 1 (e.g. "2 Games" or "Main Role:")
         painter.setPen(QColor(226, 232, 240))
-        painter.setFont(QFont("Segoe UI", 7, QFont.Weight.DemiBold))
-        painter.drawText(QRectF(0, dial_size + 8, self.width(), 14), Qt.AlignmentFlag.AlignCenter, self.sub_text1)
+        painter.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        painter.drawText(QRectF(0, dial_size + 9, self.width(), 16), Qt.AlignmentFlag.AlignCenter, self.sub_text1)
 
         # Subtext 2 (e.g. "(2 Wins)" or "Top")
         if self.sub_text2:
@@ -341,7 +310,7 @@ class CircularGaugeWidget(QWidget):
                 painter.setPen(QColor(56, 189, 248))  # Blue wins
             else:
                 painter.setPen(QColor(148, 163, 184))
-            painter.setFont(QFont("Segoe UI", 7, QFont.Weight.Normal))
-            painter.drawText(QRectF(0, dial_size + 22, self.width(), 14), Qt.AlignmentFlag.AlignCenter, self.sub_text2)
+            painter.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
+            painter.drawText(QRectF(0, dial_size + 25, self.width(), 16), Qt.AlignmentFlag.AlignCenter, self.sub_text2)
 
         painter.end()

@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 
 from src.config import ConfigManager
+from src.asset_manager import get_base_asset_dir
 from src.riot_api import RiotApiClient
 from src.game_poller import GamePoller
 from src.hotkey_listener import GlobalHotkeyListener
@@ -54,9 +55,9 @@ def main():
     app.setApplicationDisplayName("Glaive Overlay")
 
     # Set App Icon for taskbar & titlebars
-    icon_path = os.path.abspath("assets/icon.png")
-    if os.path.exists(icon_path):
-        app.setWindowIcon(QIcon(icon_path))
+    icon_file = get_base_asset_dir() / "icon.png"
+    if icon_file.exists():
+        app.setWindowIcon(QIcon(str(icon_file)))
 
     # 4. Riot API Client
     api_client = RiotApiClient(cfg)

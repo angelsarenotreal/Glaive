@@ -13,6 +13,7 @@ class SettingsDialog(QDialog):
     """Clean monochrome settings modal for Glaive configuration."""
 
     update_check_done_signal = pyqtSignal(object)
+    download_progress_signal = pyqtSignal(int)
 
     def __init__(self, config_manager: ConfigManager, parent=None):
         super().__init__(parent)
@@ -20,6 +21,7 @@ class SettingsDialog(QDialog):
         self.cfg = config_manager.config
         self.updater = AutoUpdater()
         self.update_check_done_signal.connect(self._on_update_check_result)
+        self.download_progress_signal.connect(self._on_download_progress)
         
         self.setWindowTitle("Glaive Settings")
         self.setModal(True)
@@ -183,12 +185,18 @@ class SettingsDialog(QDialog):
         else:
             self.update_status_lbl.setText(f"Glaive v{__version__} is up to date!")
 
+    def _on_download_progress(self, percent: int):
+        self.update_status_lbl.setText(f"Downloading update ({percent}%)...")
+
     def _apply_update(self, download_url: str):
-        self.update_status_lbl.setText("Downloading update...")
+        self.update_status_lbl.setText("Downloading update (0%)...")
         self.check_update_btn.setEnabled(False)
 
+        def on_progress(pct: int):
+            self.download_progress_signal.emit(pct)
+
         def run_apply():
-            success = self.updater.apply_update_windows(download_url)
+            success = self.updater.apply_update_windows(download_url, progress_callback=on_progress)
             if not success:
                 self.update_status_lbl.setText("Failed to download update.")
                 self.check_update_btn.setEnabled(True)

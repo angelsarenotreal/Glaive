@@ -128,15 +128,26 @@ class AutoUpdater:
             if progress_callback:
                 progress_callback(100)
 
+            # 2. Verify downloaded file integrity (> 10MB)
+            if not os.path.exists(new_exe_path) or os.path.getsize(new_exe_path) < 10 * 1024 * 1024:
+                print("[AutoUpdater] Downloaded update is too small or incomplete. Aborting replacement.")
+                if os.path.exists(new_exe_path):
+                    try:
+                        os.remove(new_exe_path)
+                    except Exception:
+                        pass
+                return False
+
             # If running from source/python rather than frozen exe, simply save the file
             if not is_frozen:
                 print(f"[AutoUpdater] Running in source mode. Downloaded updated executable to {new_exe_path}")
                 return True
 
-            # 2. Create batch updater script
+            # 3. Create batch updater script with existence guard
             bat_path = os.path.join(target_dir, "glaive_updater.bat")
             bat_content = f"""@echo off
 timeout /t 2 /nobreak > nul
+if not exist "{new_exe_path}" exit /b 1
 :retry
 del /f /q "{current_exe}" > nul 2>&1
 if exist "{current_exe}" (
@@ -150,13 +161,14 @@ del /f /q "%~f0" > nul 2>&1
             with open(bat_path, "w", encoding="utf-8") as f:
                 f.write(bat_content)
 
-            # 3. Launch updater batch script and quit
+            # 4. Launch updater batch script and force immediate process termination
             subprocess.Popen(
                 ["cmd.exe", "/c", bat_path],
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
                 close_fds=True
             )
-            sys.exit(0)
+            # os._exit immediately terminates the entire Windows process and releases all file locks
+            os._exit(0)
             return True
 
         except Exception as e:

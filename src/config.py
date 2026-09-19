@@ -86,7 +86,7 @@ class AppConfig:
     riot_api_key: str = ""
     default_platform: str = "euw1"  # e.g., euw1, na1, kr
     hotkey: str = "ctrl+x"
-    opacity: float = 0.95
+    opacity: float = 1.0
     poll_interval_seconds: float = 2.5
     mock_mode: bool = False
     window_scale: float = 1.0

@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QPropertyAnimation, QEasingCurv
 from PyQt6.QtGui import QMouseEvent, QColor, QIcon
 
 from src.analytics import PlayerScoutingData
+from src.asset_manager import get_base_asset_dir
 from src.ui.player_card import PlayerCardWidget
 from src.ui.settings_dialog import SettingsDialog
 from src.ui.theme import MAIN_STYLESHEET
@@ -52,9 +53,9 @@ class GlaiveOverlayWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
 
         # Set Icon
-        icon_path = os.path.abspath("assets/icon.png")
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
+        icon_file = get_base_asset_dir() / "icon.png"
+        if icon_file.exists():
+            self.setWindowIcon(QIcon(str(icon_file)))
 
         # Apply Global Stylesheet
         self.setStyleSheet(MAIN_STYLESHEET)
@@ -86,7 +87,7 @@ class GlaiveOverlayWindow(QWidget):
                 print(f"[Overlay] Error setting Win32 flags: {e}")
 
     def init_ui(self):
-        self.resize(1560, 800)
+        self.resize(1760, 960)
         self.center_on_screen()
 
         outer_layout = QVBoxLayout(self)
