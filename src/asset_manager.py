@@ -279,7 +279,8 @@ class CircularGaugeWidget(QWidget):
         self.sub_text2 = sub_text2
         self.ring_color = ring_color
         self.center_pixmap = center_pixmap
-        self.setFixedSize(88, 98)
+        self.setFixedHeight(98)
+        self.setMinimumWidth(80)
 
     def paintEvent(self, event):
         painter = QPainter(self)

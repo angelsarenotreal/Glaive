@@ -41,9 +41,9 @@ QLabel#StatusLabel {
 
 QFrame#PlayerCard {
     background-color: #151d27;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 0px;
-    padding: 8px;
+    padding: 0px;
 }
 
 QFrame#PlayerCard:hover {
