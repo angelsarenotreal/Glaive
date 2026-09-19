@@ -271,7 +271,7 @@ class PlayerCardWidget(QFrame):
         div3.setStyleSheet("background-color: rgba(255, 255, 255, 0.15);")
         main_layout.addWidget(div3)
 
-        # ---------------- 4. BOTTOM: Tag Badges Matrix (Filling & Substantial) ----------------
+        # ---------------- 4. BOTTOM: Tag Badges Matrix (Adaptive Fit & Rounded Corners) ----------------
         tags_frame = QFrame()
         tags_frame.setObjectName("CardTags")
         tags_layout = QVBoxLayout(tags_frame)
@@ -279,35 +279,34 @@ class PlayerCardWidget(QFrame):
         tags_layout.setSpacing(6)
         tags_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        def get_badge_style(category: str, is_single: bool) -> str:
-            pad = "4px 14px" if is_single else "4px 6px"
+        def get_badge_style(category: str) -> str:
             if category in ["good", "highlight"]:
                 return (
-                    f"border: 1px solid #10b981; color: #34d399; background-color: rgba(16, 185, 129, 0.14); "
-                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 700; min-height: 22px;"
+                    "border: 1px solid #10b981; color: #34d399; background-color: rgba(16, 185, 129, 0.14); "
+                    "border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 700; min-height: 22px;"
                 )
             elif category == "warning":
                 return (
-                    f"border: 1px solid #f59e0b; color: #fbbf24; background-color: rgba(245, 158, 11, 0.14); "
-                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 700; min-height: 22px;"
+                    "border: 1px solid #f59e0b; color: #fbbf24; background-color: rgba(245, 158, 11, 0.14); "
+                    "border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 700; min-height: 22px;"
                 )
             elif category == "danger":
                 return (
-                    f"border: 1px solid #ef4444; color: #f87171; background-color: rgba(239, 68, 68, 0.14); "
-                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 700; min-height: 22px;"
+                    "border: 1px solid #ef4444; color: #f87171; background-color: rgba(239, 68, 68, 0.14); "
+                    "border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 700; min-height: 22px;"
                 )
             elif category == "pro":
                 return (
-                    f"border: 1px solid #38bdf8; color: #38bdf8; background-color: rgba(56, 189, 248, 0.18); "
-                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 800; min-height: 22px;"
+                    "border: 1px solid #38bdf8; color: #38bdf8; background-color: rgba(56, 189, 248, 0.18); "
+                    "border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 800; min-height: 22px;"
                 )
             else:
                 return (
-                    f"border: 1px solid rgba(255, 255, 255, 0.22); color: #e2e8f0; background-color: rgba(255, 255, 255, 0.08); "
-                    f"border-radius: 0px; padding: {pad}; font-size: 11px; font-weight: 600; min-height: 22px;"
+                    "border: 1px solid rgba(255, 255, 255, 0.22); color: #e2e8f0; background-color: rgba(255, 255, 255, 0.08); "
+                    "border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 600; min-height: 22px;"
                 )
 
-        # Group badges into filling rows
+        # Group badges into adaptive rows
         badge_rows = []
         i = 0
         badges = self.player.badges
@@ -330,31 +329,19 @@ class PlayerCardWidget(QFrame):
 
         for row_badges in badge_rows:
             row_layout = QHBoxLayout()
+            row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             row_layout.setSpacing(6)
+            row_layout.addStretch()
 
-            if len(row_badges) == 1:
-                # Centered single badge
-                row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                b = row_badges[0]
+            for b in row_badges:
                 b_label = QLabel(b.label)
                 if b.tooltip:
                     b_label.setToolTip(b.tooltip)
                 b_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                b_label.setStyleSheet(get_badge_style(b.category, is_single=True))
-                row_layout.addStretch()
+                b_label.setStyleSheet(get_badge_style(b.category))
                 row_layout.addWidget(b_label)
-                row_layout.addStretch()
-            else:
-                # Multi-badge row: Expand to fill full card width
-                for b in row_badges:
-                    b_label = QLabel(b.label)
-                    if b.tooltip:
-                        b_label.setToolTip(b.tooltip)
-                    b_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    b_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-                    b_label.setStyleSheet(get_badge_style(b.category, is_single=False))
-                    row_layout.addWidget(b_label, 1)
 
+            row_layout.addStretch()
             tags_layout.addLayout(row_layout)
 
         main_layout.addWidget(tags_frame)
