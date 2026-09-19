@@ -93,10 +93,57 @@ class AppConfig:
     compact_mode: bool = False
     always_on_top: bool = True
     click_through: bool = False
+    start_on_boot: bool = True
 
     @property
     def regional_route(self) -> str:
         return PLATFORM_TO_REGION.get(self.default_platform.lower(), "europe")
+
+
+def set_windows_autostart(enable: bool = True) -> bool:
+    """Configures Glaive to start on Windows boot minimized in system tray."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0,
+            winreg.KEY_SET_VALUE | winreg.KEY_READ
+        )
+        exe_path = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
+        cmd = f'"{exe_path}" --hidden'
+        if enable:
+            winreg.SetValueEx(key, "Glaive", 0, winreg.REG_SZ, cmd)
+        else:
+            try:
+                winreg.DeleteValue(key, "Glaive")
+            except FileNotFoundError:
+                pass
+        winreg.CloseKey(key)
+        return True
+    except Exception as e:
+        print(f"[Config] Error setting Windows autostart: {e}")
+        return False
+
+
+def is_windows_autostart_enabled() -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0,
+            winreg.KEY_READ
+        )
+        val, _ = winreg.QueryValueEx(key, "Glaive")
+        winreg.CloseKey(key)
+        return bool(val)
+    except Exception:
+        return False
 
 
 class ConfigManager:

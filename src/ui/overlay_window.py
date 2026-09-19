@@ -34,6 +34,8 @@ ROLE_SORT_MAP = {
     "BOTTOM": 3,
     "BOT": 3,
     "ADC": 3,
+    "CARRY": 3,
+    "AD CARRY": 3,
     "UTILITY": 4,
     "SUPPORT": 4,
     "SUP": 4,

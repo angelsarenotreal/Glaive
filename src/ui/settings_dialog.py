@@ -4,7 +4,9 @@ from PyQt6.QtWidgets import (
     QComboBox, QSlider, QCheckBox, QPushButton, QFrame, QMessageBox, QProgressBar
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from src.config import ConfigManager, AVAILABLE_REGIONS
+from src.config import (
+    ConfigManager, AVAILABLE_REGIONS, set_windows_autostart, is_windows_autostart_enabled
+)
 from src.updater import AutoUpdater, ReleaseInfo
 from src.ui.theme import MAIN_STYLESHEET
 from src import __version__
@@ -119,6 +121,10 @@ class SettingsDialog(QDialog):
         self.top_check.setChecked(self.cfg.always_on_top)
         layout.addWidget(self.top_check)
 
+        self.autostart_check = QCheckBox("Start automatically on PC boot (Resident in System Tray)")
+        self.autostart_check.setChecked(self.cfg.start_on_boot or is_windows_autostart_enabled())
+        layout.addWidget(self.autostart_check)
+
         # 6. Auto-Updater Section
         update_frame = QFrame()
         update_frame.setStyleSheet(
@@ -214,6 +220,10 @@ class SettingsDialog(QDialog):
         new_opacity = self.opacity_slider.value() / 100.0
         new_mock = self.mock_check.isChecked()
         new_top = self.top_check.isChecked()
+        new_autostart = self.autostart_check.isChecked()
+
+        # Update Windows startup registry
+        set_windows_autostart(new_autostart)
 
         self.config_manager.update(
             riot_api_key=new_key,
@@ -221,6 +231,7 @@ class SettingsDialog(QDialog):
             hotkey=new_hotkey,
             opacity=new_opacity,
             mock_mode=new_mock,
-            always_on_top=new_top
+            always_on_top=new_top,
+            start_on_boot=new_autostart,
         )
         self.accept()
