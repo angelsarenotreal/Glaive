@@ -130,7 +130,7 @@ class GlaiveOverlayWindow(QWidget):
                 print(f"[Overlay] Error setting Win32 flags: {e}")
 
     def init_ui(self):
-        self.resize(1720, 860)
+        self.resize(1640, 860)
         self.center_on_screen()
 
         outer_layout = QVBoxLayout(self)
