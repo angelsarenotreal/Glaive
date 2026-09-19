@@ -230,6 +230,10 @@ class GlaiveOverlayWindow(QWidget):
         outer_layout.addWidget(self.main_container)
         self.set_window_opacity(self.cfg.opacity)
 
+        # Pre-populate with preview match data so overlay is never an empty box
+        from src.mock_data import get_mock_match_data
+        self.display_players(get_mock_match_data())
+
     def center_on_screen(self):
         screen = QApplication.primaryScreen()
         if screen:
@@ -316,14 +320,20 @@ class GlaiveOverlayWindow(QWidget):
             self._is_visible = True
 
     def open_settings(self):
-        dlg = SettingsDialog(self.config_manager, self)
+        dlg = SettingsDialog(self.config_manager, parent=None)
         if dlg.exec():
             self.cfg = self.config_manager.config
             self.set_window_opacity(self.cfg.opacity)
+            from src.mock_data import get_mock_match_data
+            self.display_players(get_mock_match_data())
             if self.cfg.mock_mode:
-                from src.mock_data import get_mock_match_data
-                self.display_players(get_mock_match_data())
                 self.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · GRANDMASTER LOBBY")
+            else:
+                self.set_status("● WAITING FOR MATCH (PORT 2999)", "LIVE SCOUTING REPORT · PREVIEW")
+
+        self.show()
+        self.raise_()
+        self.apply_win32_optimizations()
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:

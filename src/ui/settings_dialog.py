@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from src.config import ConfigManager, AVAILABLE_REGIONS
 from src.updater import AutoUpdater, ReleaseInfo
+from src.ui.theme import MAIN_STYLESHEET
 from src import __version__
 
 
@@ -24,6 +25,8 @@ class SettingsDialog(QDialog):
         self.download_progress_signal.connect(self._on_download_progress)
         
         self.setWindowTitle("Glaive Settings")
+        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+        self.setStyleSheet(MAIN_STYLESHEET)
         self.setModal(True)
         self.setMinimumWidth(480)
         self.init_ui()

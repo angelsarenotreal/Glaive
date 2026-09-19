@@ -8,6 +8,12 @@ QWidget#GlaiveOverlay {
     background-color: transparent;
 }
 
+QDialog {
+    background-color: #0c1017;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 QFrame#MainContainer {
     background-color: #0c1017;
     border: 1px solid rgba(255, 255, 255, 0.18);
