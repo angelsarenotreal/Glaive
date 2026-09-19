@@ -5,10 +5,10 @@ import threading
 from typing import List, Optional
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QScrollArea, QGraphicsOpacityEffect, QApplication, QGridLayout
+    QPushButton, QApplication
 )
-from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QMouseEvent, QColor, QIcon
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal
+from PyQt6.QtGui import QMouseEvent, QIcon
 
 from src.analytics import PlayerScoutingData
 from src.asset_manager import get_base_asset_dir
@@ -25,11 +25,53 @@ WS_EX_NOACTIVATE = 0x08000000
 WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_TOPMOST = 0x00000008
 
+ROLE_SORT_MAP = {
+    "TOP": 0,
+    "JUNGLE": 1,
+    "JGL": 1,
+    "MIDDLE": 2,
+    "MID": 2,
+    "BOTTOM": 3,
+    "BOT": 3,
+    "ADC": 3,
+    "UTILITY": 4,
+    "SUPPORT": 4,
+    "SUP": 4,
+}
+
+
+def sort_players_by_role(players: List[PlayerScoutingData]) -> List[PlayerScoutingData]:
+    """
+    Sorts players strictly by Summoner's Rift lane position:
+    TOP (0) -> JUNGLE (1) -> MID (2) -> ADC (3) -> SUPPORT (4).
+    """
+    def role_key(p: PlayerScoutingData) -> int:
+        pos = (p.assigned_position or "").upper().strip()
+        if pos in ROLE_SORT_MAP:
+            return ROLE_SORT_MAP[pos]
+        role = (p.main_role or "").upper().strip()
+        if "TOP" in role:
+            return 0
+        if "JUNG" in role or "JGL" in role:
+            return 1
+        if "MID" in role:
+            return 2
+        if "CARRY" in role or "ADC" in role or "BOT" in role:
+            return 3
+        if "SUP" in role or "UTIL" in role:
+            return 4
+        return 5
+
+    return sorted(players, key=role_key)
+
 
 class GlaiveOverlayWindow(QWidget):
     """
-    1:1 Porofessor-Style 5x2 Grid Scouting Overlay Window.
-    Features 5 Blue Team cards across the top row and 5 Red Team cards across the bottom row.
+    Pure 2x5 Player Scouting Grid Overlay Window.
+    - Top Row (Row 1): Red Side (Chaos / Map Top)
+    - Bottom Row (Row 2): Blue Side (Order / Map Bottom)
+    - Left-to-Right Ordering: TOP -> JUNGLE -> MID -> ADC -> SUPPORT
+    - Frameless, 100% solid background, sharp 0px corners, non-intrusive.
     """
 
     toggle_visibility_signal = pyqtSignal()
@@ -43,6 +85,7 @@ class GlaiveOverlayWindow(QWidget):
         self.cfg = self.config_manager.config
         self.updater = AutoUpdater()
         self.setObjectName("GlaiveOverlay")
+        self._current_status = "READY"
 
         # Window Flags: Frameless, Always On Top, Tool Window
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool
@@ -87,20 +130,20 @@ class GlaiveOverlayWindow(QWidget):
                 print(f"[Overlay] Error setting Win32 flags: {e}")
 
     def init_ui(self):
-        self.resize(1760, 960)
+        self.resize(1720, 860)
         self.center_on_screen()
 
         outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(10, 10, 10, 10)
+        outer_layout.setContentsMargins(6, 6, 6, 6)
 
         # Main Obsidian Container
         self.main_container = QFrame()
         self.main_container.setObjectName("MainContainer")
         self.container_layout = QVBoxLayout(self.main_container)
-        self.container_layout.setContentsMargins(12, 10, 12, 12)
+        self.container_layout.setContentsMargins(8, 8, 8, 8)
         self.container_layout.setSpacing(8)
 
-        # ---------------- 0. Update Alert Banner ----------------
+        # ---------------- 0. Update Alert Banner (Hidden unless update available) ----------------
         self.update_banner = QFrame()
         self.update_banner.setStyleSheet(
             "background-color: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); "
@@ -127,110 +170,20 @@ class GlaiveOverlayWindow(QWidget):
 
         self.container_layout.addWidget(self.update_banner)
 
-        # ---------------- 1. Top Header Bar ----------------
-        header_frame = QFrame()
-        header_frame.setObjectName("HeaderFrame")
-        header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(8, 4, 8, 6)
-
-        # App Brand & Status
-        brand_layout = QVBoxLayout()
-        brand_layout.setSpacing(1)
-
-        title_row = QHBoxLayout()
-        title_row.setSpacing(8)
-        title_label = QLabel("GLAIVE")
-        title_label.setObjectName("AppTitle")
-        title_row.addWidget(title_label)
-
-        ver_label = QLabel(f"v{__version__}")
-        ver_label.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 700;")
-        title_row.addWidget(ver_label)
-        title_row.addStretch()
-        brand_layout.addLayout(title_row)
-
-        self.status_label = QLabel("● WAITING FOR MATCH (PORT 2999)")
-        self.status_label.setObjectName("StatusLabel")
-        brand_layout.addWidget(self.status_label)
-        header_layout.addLayout(brand_layout)
-
-        header_layout.addStretch()
-
-        # Center Match Queue Header
-        self.match_title_label = QLabel("LIVE IN-GAME SCOUTING REPORT")
-        self.match_title_label.setStyleSheet(
-            "color: #ffffff; font-size: 12px; font-weight: 800; letter-spacing: 1.5px;"
-        )
-        header_layout.addWidget(self.match_title_label)
-
-        header_layout.addStretch()
-
-        # Right Action Controls
-        actions_layout = QHBoxLayout()
-        actions_layout.setSpacing(8)
-
-        hotkey_hint = QLabel(f"[{self.cfg.hotkey.upper()}] Toggle")
-        hotkey_hint.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 600;")
-        actions_layout.addWidget(hotkey_hint)
-
-        settings_btn = QPushButton("⚙ Settings")
-        settings_btn.clicked.connect(self.open_settings)
-        actions_layout.addWidget(settings_btn)
-
-        hide_btn = QPushButton("✕")
-        hide_btn.setObjectName("IconButton")
-        hide_btn.clicked.connect(self.toggle_overlay)
-        actions_layout.addWidget(hide_btn)
-
-        header_layout.addLayout(actions_layout)
-        self.container_layout.addWidget(header_frame)
-
-        # ---------------- 2. 5x2 GRID: Top Row (Blue) vs Bottom Row (Red) ----------------
-        grid_container = QVBoxLayout()
-        grid_container.setSpacing(8)
-
-        # --- Top Row: Blue Team (5 Cards) ---
-        blue_team_bar = QFrame()
-        blue_team_bar.setStyleSheet("background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 0px; padding: 2px 6px;")
-        blue_bar_layout = QHBoxLayout(blue_team_bar)
-        blue_bar_layout.setContentsMargins(6, 2, 6, 2)
-        blue_team_title = QLabel("ALLY TEAM (BLUE)")
-        blue_team_title.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: 800; letter-spacing: 1px;")
-        blue_bar_layout.addWidget(blue_team_title)
-        blue_bar_layout.addStretch()
-        self.blue_summary_label = QLabel("Avg Rank: GrandMaster · 58% WR")
-        self.blue_summary_label.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 600;")
-        blue_bar_layout.addWidget(self.blue_summary_label)
-        grid_container.addWidget(blue_team_bar)
-
-        self.blue_cards_row = QHBoxLayout()
-        self.blue_cards_row.setSpacing(8)
-        grid_container.addLayout(self.blue_cards_row)
-
-        # --- Bottom Row: Red Team (5 Cards) ---
-        red_team_bar = QFrame()
-        red_team_bar.setStyleSheet("background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 0px; padding: 2px 6px;")
-        red_bar_layout = QHBoxLayout(red_team_bar)
-        red_bar_layout.setContentsMargins(6, 2, 6, 2)
-        red_team_title = QLabel("ENEMY TEAM (RED)")
-        red_team_title.setStyleSheet("color: #f87171; font-size: 11px; font-weight: 800; letter-spacing: 1px;")
-        red_bar_layout.addWidget(red_team_title)
-        red_bar_layout.addStretch()
-        self.red_summary_label = QLabel("Avg Rank: GrandMaster · 55% WR")
-        self.red_summary_label.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 600;")
-        red_bar_layout.addWidget(self.red_summary_label)
-        grid_container.addWidget(red_team_bar)
-
+        # ---------------- 1. Top Row: Red Team (5 Cards: TOP -> JGL -> MID -> ADC -> SUP) ----------------
         self.red_cards_row = QHBoxLayout()
         self.red_cards_row.setSpacing(8)
-        grid_container.addLayout(self.red_cards_row)
+        self.container_layout.addLayout(self.red_cards_row)
 
-        self.container_layout.addLayout(grid_container)
+        # ---------------- 2. Bottom Row: Blue Team (5 Cards: TOP -> JGL -> MID -> ADC -> SUP) ----------------
+        self.blue_cards_row = QHBoxLayout()
+        self.blue_cards_row.setSpacing(8)
+        self.container_layout.addLayout(self.blue_cards_row)
 
         outer_layout.addWidget(self.main_container)
         self.set_window_opacity(self.cfg.opacity)
 
-        # Pre-populate with preview match data so overlay is never an empty box
+        # Pre-populate with preview match data so overlay is ready immediately
         from src.mock_data import get_mock_match_data
         self.display_players(get_mock_match_data())
 
@@ -267,36 +220,38 @@ class GlaiveOverlayWindow(QWidget):
         t.start()
 
     def display_players(self, players: List[PlayerScoutingData]):
-        """Populates the 10 player cards into 5 Blue (Top Row) and 5 Red (Bottom Row)."""
-        self._clear_layout(self.blue_cards_row)
+        """
+        Populates the 10 player cards:
+        - Top Row: Red Team (Team 200 / Chaos / Map Top), sorted TOP -> JGL -> MID -> ADC -> SUP
+        - Bottom Row: Blue Team (Team 100 / Order / Map Bottom), sorted TOP -> JGL -> MID -> ADC -> SUP
+        """
         self._clear_layout(self.red_cards_row)
+        self._clear_layout(self.blue_cards_row)
 
-        blue_players = [p for p in players if p.team_id == 100]
         red_players = [p for p in players if p.team_id == 200]
+        blue_players = [p for p in players if p.team_id == 100]
 
-        if not blue_players and not red_players:
-            blue_players = players[:5]
-            red_players = players[5:]
+        if not red_players and not blue_players:
+            # Fallback if team_ids not provided: first 5 top, second 5 bottom
+            red_players = players[5:] if len(players) >= 10 else players[:len(players)//2]
+            blue_players = players[:5] if len(players) >= 10 else players[len(players)//2:]
+        elif not red_players:
+            red_players = [p for p in players if p not in blue_players]
+        elif not blue_players:
+            blue_players = [p for p in players if p not in red_players]
 
-        for p in blue_players:
-            card = PlayerCardWidget(p)
-            self.blue_cards_row.addWidget(card)
+        sorted_red = sort_players_by_role(red_players)
+        sorted_blue = sort_players_by_role(blue_players)
 
-        for p in red_players:
+        # Top Row (Red Side)
+        for p in sorted_red:
             card = PlayerCardWidget(p)
             self.red_cards_row.addWidget(card)
 
-        self._update_team_summary(blue_players, self.blue_summary_label)
-        self._update_team_summary(red_players, self.red_summary_label)
-
-    def _update_team_summary(self, players: List[PlayerScoutingData], label: QLabel):
-        if not players:
-            label.setText("No Data")
-            return
-        total_wr = sum(p.ranked_winrate for p in players if p.ranked_wins + p.ranked_losses > 0)
-        valid_wr_count = sum(1 for p in players if p.ranked_wins + p.ranked_losses > 0)
-        avg_wr = total_wr / max(valid_wr_count, 1) if valid_wr_count > 0 else 0
-        label.setText(f"Avg Ranked WR: {avg_wr:.0f}% · {len(players)} Players")
+        # Bottom Row (Blue Side)
+        for p in sorted_blue:
+            card = PlayerCardWidget(p)
+            self.blue_cards_row.addWidget(card)
 
     def _clear_layout(self, layout):
         while layout.count():
@@ -306,9 +261,8 @@ class GlaiveOverlayWindow(QWidget):
                 widget.deleteLater()
 
     def set_status(self, status: str, match_title: str = ""):
-        self.status_label.setText(status)
-        if match_title:
-            self.match_title_label.setText(match_title)
+        self._current_status = status
+        self.setWindowTitle(f"Glaive - {status}")
 
     def toggle_overlay(self):
         if self.isVisible():
@@ -326,10 +280,6 @@ class GlaiveOverlayWindow(QWidget):
             self.set_window_opacity(self.cfg.opacity)
             from src.mock_data import get_mock_match_data
             self.display_players(get_mock_match_data())
-            if self.cfg.mock_mode:
-                self.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · GRANDMASTER LOBBY")
-            else:
-                self.set_status("● WAITING FOR MATCH (PORT 2999)", "LIVE SCOUTING REPORT · PREVIEW")
 
         self.show()
         self.raise_()
