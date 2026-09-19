@@ -11,7 +11,7 @@ class PlayerCardWidget(QFrame):
     """
     1:1 Reconstructed Porofessor In-Game Player Card.
     Features large high-contrast profile icons, dual summoner spells, mastery crest, rank wings,
-    3 circular gauges (12 Hr, Main Role, 30 Day), and color-coded tactical tags.
+    3 circular gauges (12 Hr, Main Role, 30 Day), and centered color-coded tactical tags.
     """
 
     def __init__(self, player: PlayerScoutingData, parent=None):
@@ -53,7 +53,7 @@ class PlayerCardWidget(QFrame):
 
         header_layout.addLayout(name_col, 1)
 
-        # Subtle history icon on top-right
+        # History icon on top-right
         hist_icon = QLabel("↺")
         hist_icon.setStyleSheet("color: #64748b; font-size: 14px; font-weight: bold;")
         header_layout.addWidget(hist_icon)
@@ -66,15 +66,17 @@ class PlayerCardWidget(QFrame):
         div1.setStyleSheet("background-color: rgba(255, 255, 255, 0.12);")
         main_layout.addWidget(div1)
 
-        # ---------------- 2. UPPER STATS: 2-Column Champion vs Ranked Crest ----------------
+        # ---------------- 2. UPPER STATS: 2-Column Champion vs Ranked Crest (Centered) ----------------
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(10)
 
         # --- Left Column: Spells + Champion Icon + KDA + Champ WR + Champ Rank ---
         left_col = QVBoxLayout()
         left_col.setSpacing(3)
+        left_col.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         champ_row = QHBoxLayout()
+        champ_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
         champ_row.setSpacing(6)
 
         # Dual Spells stacked vertically (20x20 each)
@@ -104,10 +106,9 @@ class PlayerCardWidget(QFrame):
             "border-radius: 0px; padding: 2px 5px;"
         )
         champ_row.addWidget(mastery_label)
-        champ_row.addStretch()
         left_col.addLayout(champ_row)
 
-        # KDA line: Green kills / Red deaths / Amber assists
+        # KDA line: Green kills / Red deaths / Amber assists (Centered)
         kda_label = QLabel(
             f"<span style='color:#34d399; font-weight:800;'>{self.player.champion_kills_str}</span> / "
             f"<span style='color:#f87171; font-weight:800;'>{self.player.champion_deaths_str}</span> / "
@@ -115,9 +116,10 @@ class PlayerCardWidget(QFrame):
         )
         kda_label.setStyleSheet("font-size: 12px;")
         kda_label.setTextFormat(Qt.TextFormat.RichText)
+        kda_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_col.addWidget(kda_label)
 
-        # Champion Winrate line
+        # Champion Winrate line (Centered)
         c_wr_color = "#38bdf8" if self.player.champion_winrate >= 50 else "#f87171"
         champ_wr_label = QLabel(
             f"<span style='color:{c_wr_color}; font-weight:700;'>{self.player.champion_winrate:.0f}%</span> "
@@ -125,11 +127,13 @@ class PlayerCardWidget(QFrame):
         )
         champ_wr_label.setStyleSheet("font-size: 11px;")
         champ_wr_label.setTextFormat(Qt.TextFormat.RichText)
+        champ_wr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_col.addWidget(champ_wr_label)
 
-        # Champion Leaderboard Rank
+        # Champion Leaderboard Rank (Centered)
         champ_rank_label = QLabel(self.player.champion_server_rank)
         champ_rank_label.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 600;")
+        champ_rank_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_col.addWidget(champ_rank_label)
 
         stats_layout.addLayout(left_col, 1)
@@ -143,23 +147,25 @@ class PlayerCardWidget(QFrame):
         # --- Right Column: Ranked Crest + Tier LP + Ranked WR + Server Rank ---
         right_col = QVBoxLayout()
         right_col.setSpacing(3)
+        right_col.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Rank Wings Image (46x46)
+        # Rank Wings Image (46x46 Centered)
         crest_row = QHBoxLayout()
+        crest_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
         crest_label = QLabel()
         crest_pixmap = self.asset_mgr.get_ranked_crest(self.player.tier, size=46)
         crest_label.setPixmap(crest_pixmap)
         crest_label.setFixedSize(46, 46)
         crest_row.addWidget(crest_label)
-        crest_row.addStretch()
         right_col.addLayout(crest_row)
 
-        # Tier & LP
+        # Tier & LP (Centered)
         rank_tier_label = QLabel(self.player.rank_label)
         rank_tier_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: 800;")
+        rank_tier_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_col.addWidget(rank_tier_label)
 
-        # Ranked Winrate line
+        # Ranked Winrate line (Centered)
         r_wr_color = "#38bdf8" if self.player.ranked_winrate >= 50 else "#f87171"
         total_ranked = self.player.ranked_wins + self.player.ranked_losses
         ranked_wr_label = QLabel(
@@ -168,11 +174,13 @@ class PlayerCardWidget(QFrame):
         )
         ranked_wr_label.setStyleSheet("font-size: 11px;")
         ranked_wr_label.setTextFormat(Qt.TextFormat.RichText)
+        ranked_wr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_col.addWidget(ranked_wr_label)
 
-        # Overall Server Rank
+        # Overall Server Rank (Centered)
         srv_rank_label = QLabel(self.player.server_rank)
         srv_rank_label.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 600;")
+        srv_rank_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_col.addWidget(srv_rank_label)
 
         stats_layout.addLayout(right_col, 1)
@@ -200,7 +208,7 @@ class PlayerCardWidget(QFrame):
         )
         gauges_layout.addWidget(gauge_12hr)
 
-        # 2. Main Role Gauge (Center icon mode)
+        # 2. Main Role Gauge (Center icon mode with official CommunityDragon icons)
         role_icon = self.asset_mgr.get_role_icon(self.player.main_role, size=24)
         role_ring_color = QColor(245, 158, 11) if self.player.is_autofilled else QColor(56, 189, 248)
         gauge_role = CircularGaugeWidget(
@@ -232,12 +240,14 @@ class PlayerCardWidget(QFrame):
         div3.setStyleSheet("background-color: rgba(255, 255, 255, 0.12);")
         main_layout.addWidget(div3)
 
-        # ---------------- 4. BOTTOM: Tag Badges Matrix ----------------
+        # ---------------- 4. BOTTOM: Tag Badges Matrix (Centered) ----------------
         tags_container = QVBoxLayout()
+        tags_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tags_container.setSpacing(5)
 
-        # Group badges into rows of 2 or 3
+        # Group badges into rows of 2 (or 1 if long)
         current_row = QHBoxLayout()
+        current_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
         current_row.setSpacing(5)
         count_in_row = 0
 
@@ -245,28 +255,25 @@ class PlayerCardWidget(QFrame):
             b_label = QLabel(badge.label)
             if badge.tooltip:
                 b_label.setToolTip(badge.tooltip)
+            b_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             # Apply Porofessor colored border styles (Sharp 0px corners)
             if badge.category in ["good", "highlight"]:
-                # Cyan/Emerald border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #10b981; color: #34d399; background-color: rgba(16, 185, 129, 0.12); "
                     "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
                 )
             elif badge.category == "warning":
-                # Amber/Gold border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #f59e0b; color: #fbbf24; background-color: rgba(245, 158, 11, 0.12); "
                     "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
                 )
             elif badge.category == "danger":
-                # Red border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #ef4444; color: #f87171; background-color: rgba(239, 68, 68, 0.12); "
                     "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 700;"
                 )
             elif badge.category == "pro":
-                # Electric Blue border & text
                 b_label.setStyleSheet(
                     "border: 1px solid #38bdf8; color: #38bdf8; background-color: rgba(56, 189, 248, 0.16); "
                     "border-radius: 0px; padding: 3px 8px; font-size: 10px; font-weight: 800;"
@@ -279,9 +286,9 @@ class PlayerCardWidget(QFrame):
 
             is_long = len(badge.label) >= 15
             if is_long and count_in_row > 0:
-                current_row.addStretch()
                 tags_container.addLayout(current_row)
                 current_row = QHBoxLayout()
+                current_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 current_row.setSpacing(5)
                 count_in_row = 0
 
@@ -289,14 +296,13 @@ class PlayerCardWidget(QFrame):
             count_in_row += 2 if is_long else 1
 
             if count_in_row >= 2:
-                current_row.addStretch()
                 tags_container.addLayout(current_row)
                 current_row = QHBoxLayout()
+                current_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 current_row.setSpacing(5)
                 count_in_row = 0
 
         if count_in_row > 0:
-            current_row.addStretch()
             tags_container.addLayout(current_row)
 
         main_layout.addLayout(tags_container)

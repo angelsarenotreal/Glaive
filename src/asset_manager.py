@@ -175,13 +175,32 @@ class AssetManager:
 
         return self._create_placeholder(t_clean[:2], size, 0)
 
+    ROLE_FILE_MAP = {
+        "top": "top.png",
+        "jungle": "jungle.png",
+        "jungler": "jungle.png",
+        "jgl": "jungle.png",
+        "mid": "mid.png",
+        "middle": "mid.png",
+        "bot": "bot.png",
+        "bottom": "bot.png",
+        "ad_carry": "bot.png",
+        "ad carry": "bot.png",
+        "adc": "bot.png",
+        "carry": "bot.png",
+        "support": "support.png",
+        "utility": "support.png",
+        "sup": "support.png",
+    }
+
     def get_role_icon(self, role: str, size: int = 24) -> QPixmap:
-        r_clean = role.lower().strip().replace(" ", "_")
-        cache_key = f"role_{r_clean}_{size}"
+        r_clean = role.lower().strip()
+        filename = self.ROLE_FILE_MAP.get(r_clean, f"{r_clean.replace(' ', '_')}.png")
+        cache_key = f"role_{filename}_{size}"
         if cache_key in self._pixmap_cache:
             return self._pixmap_cache[cache_key]
 
-        local_file = self.roles_dir / f"{r_clean}.png"
+        local_file = self.roles_dir / filename
         if local_file.exists():
             raw = QPixmap(str(local_file))
             if not raw.isNull():
@@ -189,7 +208,7 @@ class AssetManager:
                 self._pixmap_cache[cache_key] = scaled
                 return scaled
 
-        return self._create_placeholder(role[:1], size, size // 2)
+        return self._create_placeholder(role[:1] if role else "R", size, size // 2)
 
     def _download_asset(self, url: str, local_path: Path, tag: str):
         try:

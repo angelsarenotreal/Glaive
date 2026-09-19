@@ -1,4 +1,6 @@
 import os
+import shutil
+import requests
 from PIL import Image, ImageDraw
 
 def generate_glaive_icon():
@@ -30,31 +32,28 @@ def generate_glaive_icon():
     )
 
     # 3. Stylized Glaive Blade (Monochrome Pure White & Silver)
-    # Central Sword/Glaive Tip & Body
     center_x = 256
     
-    # Blade Tip & Spine
     blade_poly_left = [
-        (center_x, 90),     # Tip
-        (center_x - 48, 230), # Left guard edge
-        (center_x - 22, 330), # Left lower blade
-        (center_x - 14, 390), # Left hilt
-        (center_x, 390),      # Hilt center
-        (center_x, 90),       # Tip
+        (center_x, 90),
+        (center_x - 48, 230),
+        (center_x - 22, 330),
+        (center_x - 14, 390),
+        (center_x, 390),
+        (center_x, 90),
     ]
     draw.polygon(blade_poly_left, fill=(240, 245, 250, 255))
 
     blade_poly_right = [
-        (center_x, 90),     # Tip
-        (center_x + 48, 230), # Right guard edge
-        (center_x + 22, 330), # Right lower blade
-        (center_x + 14, 390), # Right hilt
-        (center_x, 390),      # Hilt center
-        (center_x, 90),       # Tip
+        (center_x, 90),
+        (center_x + 48, 230),
+        (center_x + 22, 330),
+        (center_x + 14, 390),
+        (center_x, 390),
+        (center_x, 90),
     ]
     draw.polygon(blade_poly_right, fill=(180, 195, 210, 255))
 
-    # Crossguard Wings
     guard_left = [
         (center_x - 14, 350),
         (center_x - 100, 320),
@@ -71,7 +70,6 @@ def generate_glaive_icon():
     ]
     draw.polygon(guard_right, fill=(180, 195, 210, 255))
 
-    # Handle & Pommel
     draw.rounded_rectangle(
         [(center_x - 10, 385), (center_x + 10, 440)],
         radius=4,
@@ -82,19 +80,59 @@ def generate_glaive_icon():
         fill=(245, 250, 255, 255)
     )
 
-    # Center Blade Fuller Accent Line
     draw.line([(center_x, 110), (center_x, 380)], fill=(13, 17, 23, 200), width=4)
 
-    # Save PNG
     png_path = "assets/icon.png"
     img.save(png_path, format="PNG")
     print(f"Generated {png_path}")
 
-    # Save Multi-resolution ICO
     ico_path = "assets/icon.ico"
     sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
     img.save(ico_path, format="ICO", sizes=sizes)
     print(f"Generated {ico_path}")
 
+
+def ensure_role_assets():
+    roles_dir = os.path.join("assets", "roles")
+    os.makedirs(roles_dir, exist_ok=True)
+    
+    role_urls = {
+        "top.png": "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-top.png",
+        "jungle.png": "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-jungle.png",
+        "mid.png": "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-middle.png",
+        "bot.png": "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-bottom.png",
+        "support.png": "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-utility.png",
+    }
+    
+    for filename, url in role_urls.items():
+        dst_path = os.path.join(roles_dir, filename)
+        if not os.path.exists(dst_path) or os.path.getsize(dst_path) < 100:
+            try:
+                resp = requests.get(url, timeout=6)
+                if resp.status_code == 200:
+                    with open(dst_path, "wb") as f:
+                        f.write(resp.content)
+                    print(f"Downloaded role asset: {filename}")
+            except Exception as e:
+                print(f"Failed downloading {filename}: {e}")
+
+    # Aliases
+    aliases = {
+        "top.png": ["top.png"],
+        "jungle.png": ["jungler.png", "jgl.png"],
+        "mid.png": ["middle.png"],
+        "bot.png": ["bottom.png", "ad_carry.png", "adc.png"],
+        "support.png": ["utility.png", "sup.png"],
+    }
+    for src, dst_list in aliases.items():
+        src_path = os.path.join(roles_dir, src)
+        if os.path.exists(src_path):
+            for dst in dst_list:
+                if src != dst:
+                    dst_path = os.path.join(roles_dir, dst)
+                    if not os.path.exists(dst_path):
+                        shutil.copyfile(src_path, dst_path)
+
 if __name__ == "__main__":
     generate_glaive_icon()
+    ensure_role_assets()
