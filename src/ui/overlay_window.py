@@ -5,7 +5,7 @@ import threading
 from typing import List, Optional
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QScrollArea, QGraphicsOpacityEffect, QApplication, QMessageBox
+    QPushButton, QScrollArea, QGraphicsOpacityEffect, QApplication, QGridLayout
 )
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QMouseEvent, QColor, QIcon
@@ -27,8 +27,8 @@ WS_EX_TOPMOST = 0x00000008
 
 class GlaiveOverlayWindow(QWidget):
     """
-    Ultra-lightweight, hardware-accelerated, transparent monochrome overlay window.
-    Engineered for zero FPS impact, auto-updates, and no focus stealing.
+    1:1 Porofessor-Style 5x2 Grid Scouting Overlay Window.
+    Features 5 Blue Team cards across the top row and 5 Red Team cards across the bottom row.
     """
 
     toggle_visibility_signal = pyqtSignal()
@@ -86,23 +86,23 @@ class GlaiveOverlayWindow(QWidget):
                 print(f"[Overlay] Error setting Win32 flags: {e}")
 
     def init_ui(self):
-        self.resize(1180, 680)
+        self.resize(1560, 800)
         self.center_on_screen()
 
         outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(12, 12, 12, 12)
+        outer_layout.setContentsMargins(10, 10, 10, 10)
 
         # Main Obsidian Container
         self.main_container = QFrame()
         self.main_container.setObjectName("MainContainer")
         self.container_layout = QVBoxLayout(self.main_container)
-        self.container_layout.setContentsMargins(14, 12, 14, 14)
-        self.container_layout.setSpacing(10)
+        self.container_layout.setContentsMargins(12, 10, 12, 12)
+        self.container_layout.setSpacing(8)
 
-        # ---------------- 0. Update Alert Banner (Hidden by default) ----------------
+        # ---------------- 0. Update Alert Banner ----------------
         self.update_banner = QFrame()
         self.update_banner.setStyleSheet(
-            "background-color: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.28); "
+            "background-color: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); "
             "border-radius: 6px; padding: 4px 8px;"
         )
         self.update_banner.hide()
@@ -115,9 +115,7 @@ class GlaiveOverlayWindow(QWidget):
         banner_layout.addStretch()
 
         self.update_btn = QPushButton("Update & Restart")
-        self.update_btn.setStyleSheet(
-            "background-color: #ffffff; color: #000000; font-weight: 800; padding: 3px 10px;"
-        )
+        self.update_btn.setStyleSheet("background-color: #38bdf8; color: #000000; font-weight: 800; padding: 3px 10px;")
         self.update_btn.clicked.connect(self._trigger_update_download)
         banner_layout.addWidget(self.update_btn)
 
@@ -132,11 +130,11 @@ class GlaiveOverlayWindow(QWidget):
         header_frame = QFrame()
         header_frame.setObjectName("HeaderFrame")
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(8, 6, 8, 8)
+        header_layout.setContentsMargins(8, 4, 8, 6)
 
         # App Brand & Status
         brand_layout = QVBoxLayout()
-        brand_layout.setSpacing(2)
+        brand_layout.setSpacing(1)
 
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
@@ -158,9 +156,9 @@ class GlaiveOverlayWindow(QWidget):
         header_layout.addStretch()
 
         # Center Match Queue Header
-        self.match_title_label = QLabel("LIVE SCOUTING REPORT")
+        self.match_title_label = QLabel("LIVE IN-GAME SCOUTING REPORT")
         self.match_title_label.setStyleSheet(
-            "color: #ffffff; font-size: 13px; font-weight: 700; letter-spacing: 1.5px;"
+            "color: #ffffff; font-size: 12px; font-weight: 800; letter-spacing: 1.5px;"
         )
         header_layout.addWidget(self.match_title_label)
 
@@ -186,59 +184,47 @@ class GlaiveOverlayWindow(QWidget):
         header_layout.addLayout(actions_layout)
         self.container_layout.addWidget(header_frame)
 
-        # ---------------- 2. Dual-Column Player Body ----------------
-        self.columns_layout = QHBoxLayout()
-        self.columns_layout.setSpacing(14)
+        # ---------------- 2. 5x2 GRID: Top Row (Blue) vs Bottom Row (Red) ----------------
+        grid_container = QVBoxLayout()
+        grid_container.setSpacing(8)
 
-        # --- Blue Team Column ---
-        self.blue_column = QVBoxLayout()
-        self.blue_column.setSpacing(8)
+        # --- Top Row: Blue Team (5 Cards) ---
+        blue_team_bar = QFrame()
+        blue_team_bar.setStyleSheet("background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 4px; padding: 2px 6px;")
+        blue_bar_layout = QHBoxLayout(blue_team_bar)
+        blue_bar_layout.setContentsMargins(6, 2, 6, 2)
+        blue_team_title = QLabel("ALLY TEAM (BLUE)")
+        blue_team_title.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: 800; letter-spacing: 1px;")
+        blue_bar_layout.addWidget(blue_team_title)
+        blue_bar_layout.addStretch()
+        self.blue_summary_label = QLabel("Avg Rank: GrandMaster · 58% WR")
+        self.blue_summary_label.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 600;")
+        blue_bar_layout.addWidget(self.blue_summary_label)
+        grid_container.addWidget(blue_team_bar)
 
-        blue_header = QFrame()
-        blue_header.setStyleSheet("background: rgba(255, 255, 255, 0.04); border-radius: 6px; padding: 4px;")
-        blue_h_layout = QHBoxLayout(blue_header)
-        blue_h_layout.setContentsMargins(6, 2, 6, 2)
-        blue_title = QLabel("ALLY TEAM (BLUE)")
-        blue_title.setObjectName("TeamHeader")
-        blue_title.setStyleSheet("color: #e2e8f0;")
-        blue_h_layout.addWidget(blue_title)
-        blue_h_layout.addStretch()
-        self.blue_summary_label = QLabel("Avg Rank: --")
-        self.blue_summary_label.setObjectName("TeamSubtext")
-        blue_h_layout.addWidget(self.blue_summary_label)
-        self.blue_column.addWidget(blue_header)
+        self.blue_cards_row = QHBoxLayout()
+        self.blue_cards_row.setSpacing(8)
+        grid_container.addLayout(self.blue_cards_row)
 
-        self.blue_cards_layout = QVBoxLayout()
-        self.blue_cards_layout.setSpacing(6)
-        self.blue_column.addLayout(self.blue_cards_layout)
-        self.blue_column.addStretch()
+        # --- Bottom Row: Red Team (5 Cards) ---
+        red_team_bar = QFrame()
+        red_team_bar.setStyleSheet("background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 4px; padding: 2px 6px;")
+        red_bar_layout = QHBoxLayout(red_team_bar)
+        red_bar_layout.setContentsMargins(6, 2, 6, 2)
+        red_team_title = QLabel("ENEMY TEAM (RED)")
+        red_team_title.setStyleSheet("color: #f87171; font-size: 11px; font-weight: 800; letter-spacing: 1px;")
+        red_bar_layout.addWidget(red_team_title)
+        red_bar_layout.addStretch()
+        self.red_summary_label = QLabel("Avg Rank: GrandMaster · 55% WR")
+        self.red_summary_label.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 600;")
+        red_bar_layout.addWidget(self.red_summary_label)
+        grid_container.addWidget(red_team_bar)
 
-        # --- Red Team Column ---
-        self.red_column = QVBoxLayout()
-        self.red_column.setSpacing(8)
+        self.red_cards_row = QHBoxLayout()
+        self.red_cards_row.setSpacing(8)
+        grid_container.addLayout(self.red_cards_row)
 
-        red_header = QFrame()
-        red_header.setStyleSheet("background: rgba(255, 255, 255, 0.04); border-radius: 6px; padding: 4px;")
-        red_h_layout = QHBoxLayout(red_header)
-        red_h_layout.setContentsMargins(6, 2, 6, 2)
-        red_title = QLabel("ENEMY TEAM (RED)")
-        red_title.setObjectName("TeamHeader")
-        red_title.setStyleSheet("color: #f1f5f9;")
-        red_h_layout.addWidget(red_title)
-        red_h_layout.addStretch()
-        self.red_summary_label = QLabel("Avg Rank: --")
-        self.red_summary_label.setObjectName("TeamSubtext")
-        red_h_layout.addWidget(self.red_summary_label)
-        self.red_column.addWidget(red_header)
-
-        self.red_cards_layout = QVBoxLayout()
-        self.red_cards_layout.setSpacing(6)
-        self.red_column.addLayout(self.red_cards_layout)
-        self.red_column.addStretch()
-
-        self.columns_layout.addLayout(self.blue_column, 1)
-        self.columns_layout.addLayout(self.red_column, 1)
-        self.container_layout.addLayout(self.columns_layout)
+        self.container_layout.addLayout(grid_container)
 
         outer_layout.addWidget(self.main_container)
         self.set_window_opacity(self.cfg.opacity)
@@ -249,7 +235,7 @@ class GlaiveOverlayWindow(QWidget):
             geo = screen.availableGeometry()
             x = (geo.width() - self.width()) // 2
             y = (geo.height() - self.height()) // 2
-            self.move(x, max(y, 40))
+            self.move(max(10, x), max(10, y))
 
     def set_window_opacity(self, opacity: float):
         self.setWindowOpacity(max(0.3, min(1.0, opacity)))
@@ -275,8 +261,9 @@ class GlaiveOverlayWindow(QWidget):
         t.start()
 
     def display_players(self, players: List[PlayerScoutingData]):
-        self._clear_layout(self.blue_cards_layout)
-        self._clear_layout(self.red_cards_layout)
+        """Populates the 10 player cards into 5 Blue (Top Row) and 5 Red (Bottom Row)."""
+        self._clear_layout(self.blue_cards_row)
+        self._clear_layout(self.red_cards_row)
 
         blue_players = [p for p in players if p.team_id == 100]
         red_players = [p for p in players if p.team_id == 200]
@@ -287,11 +274,11 @@ class GlaiveOverlayWindow(QWidget):
 
         for p in blue_players:
             card = PlayerCardWidget(p)
-            self.blue_cards_layout.addWidget(card)
+            self.blue_cards_row.addWidget(card)
 
         for p in red_players:
             card = PlayerCardWidget(p)
-            self.red_cards_layout.addWidget(card)
+            self.red_cards_row.addWidget(card)
 
         self._update_team_summary(blue_players, self.blue_summary_label)
         self._update_team_summary(red_players, self.red_summary_label)
@@ -303,7 +290,7 @@ class GlaiveOverlayWindow(QWidget):
         total_wr = sum(p.ranked_winrate for p in players if p.ranked_wins + p.ranked_losses > 0)
         valid_wr_count = sum(1 for p in players if p.ranked_wins + p.ranked_losses > 0)
         avg_wr = total_wr / max(valid_wr_count, 1) if valid_wr_count > 0 else 0
-        label.setText(f"Avg WR: {avg_wr:.0f}% · {len(players)} Players")
+        label.setText(f"Avg Ranked WR: {avg_wr:.0f}% · {len(players)} Players")
 
     def _clear_layout(self, layout):
         while layout.count():
@@ -334,7 +321,7 @@ class GlaiveOverlayWindow(QWidget):
             if self.cfg.mock_mode:
                 from src.mock_data import get_mock_match_data
                 self.display_players(get_mock_match_data())
-                self.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · DIAMOND I LOBBY")
+                self.set_status("● PREVIEW MODE (MOCK DATA)", "PREVIEW · GRANDMASTER LOBBY")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:

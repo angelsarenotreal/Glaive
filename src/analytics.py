@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 @dataclass
 class Badge:
     label: str
-    category: str  # "highlight", "good", "warning", "danger", "neutral"
+    category: str  # "highlight", "good", "warning", "danger", "neutral", "pro"
     tooltip: str = ""
 
 @dataclass
@@ -20,35 +20,67 @@ class PlayerScoutingData:
     game_name: str
     tag_line: str
     champion_name: str
-    team_id: int  # 100 for Blue/Order, 200 for Red/Chaos
-    assigned_position: str = ""  # TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
+    team_id: int  # 100 for Blue/Order (Top Row), 200 for Red/Chaos (Bottom Row)
+    assigned_position: str = "TOP"  # TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
     level: int = 1
-    
-    # Ranked Info
-    tier: str = "UNRANKED"
+    profile_icon_id: int = 588
+
+    # Summoner Spells
+    spell1_name: str = "flash"
+    spell2_name: str = "teleport"
+
+    # Champion Specific Form & Mastery
+    champion_mastery_level: int = 209
+    champion_kills_str: str = "6.2"
+    champion_deaths_str: str = "3.7"
+    champion_assists_str: str = "4.7"
+    champion_games: int = 201
+    champion_wins: int = 117
+    champion_server_rank: str = "Rank: #80"
+
+    # Ranked Overview
+    tier: str = "GRANDMASTER"
     rank: str = ""
-    league_points: int = 0
-    ranked_wins: int = 0
-    ranked_losses: int = 0
-    
-    # Champion Specific Form
-    champion_games: int = 0
-    champion_wins: int = 0
-    
-    # Recent Form (last 5-10 matches)
+    league_points: int = 807
+    ranked_wins: int = 198
+    ranked_losses: int = 164
+    server_rank: str = "Rank: #4,608"
+
+    # 12-Hour & 30-Day Activity
+    twelve_hr_games: int = 2
+    twelve_hr_wins: int = 2
+    thirty_day_games: int = 277
+    thirty_day_wins: int = 162
+    main_role: str = "Top"
+    is_autofilled: bool = False
+
+    # Recent Matches
     recent_matches: List[RecentMatchSummary] = field(default_factory=list)
-    recent_kills: float = 0.0
-    recent_deaths: float = 0.0
-    recent_assists: float = 0.0
-    
-    # Computed Tags & Badges
     badges: List[Badge] = field(default_factory=list)
 
     @property
     def display_riot_id(self) -> str:
         if self.tag_line:
-            return f"{self.game_name} #{self.tag_line}"
+            return f"{self.game_name}#{self.tag_line}"
         return self.game_name
+
+    @property
+    def twelve_hr_winrate(self) -> float:
+        if self.twelve_hr_games == 0:
+            return 0.0
+        return round((self.twelve_hr_wins / self.twelve_hr_games) * 100, 1)
+
+    @property
+    def thirty_day_winrate(self) -> float:
+        if self.thirty_day_games == 0:
+            return 0.0
+        return round((self.thirty_day_wins / self.thirty_day_games) * 100, 1)
+
+    @property
+    def champion_winrate(self) -> float:
+        if self.champion_games == 0:
+            return 0.0
+        return round((self.champion_wins / self.champion_games) * 100, 1)
 
     @property
     def ranked_winrate(self) -> float:
@@ -58,55 +90,38 @@ class PlayerScoutingData:
         return round((self.ranked_wins / total) * 100, 1)
 
     @property
-    def champion_winrate(self) -> float:
-        if self.champion_games == 0:
-            return 0.0
-        return round((self.champion_wins / self.champion_games) * 100, 1)
-
-    @property
-    def recent_kda(self) -> float:
-        if self.recent_deaths == 0:
-            return round(self.recent_kills + self.recent_assists, 2)
-        return round((self.recent_kills + self.recent_assists) / self.recent_deaths, 2)
-
-    @property
     def rank_label(self) -> str:
-        if self.tier.upper() in ["UNRANKED", ""]:
-            return "Unranked"
-        if self.tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER"]:
-            return f"{self.tier.capitalize()} {self.league_points} LP"
-        return f"{self.tier.capitalize()} {self.rank} ({self.league_points} LP)"
+        t = self.tier.capitalize()
+        if self.tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER", "UNRANKED"]:
+            return f"{t} {self.league_points} LP" if self.tier.upper() != "UNRANKED" else "Unranked"
+        return f"{t} {self.rank} {self.league_points} LP"
 
 
 class AnalyticsEngine:
-    """Calculates tactical tags, streaks, and threat evaluations for players."""
+    """Calculates tactical tags, streaks, and threat evaluations matching Porofessor."""
 
     @staticmethod
     def compute_player_badges(player: PlayerScoutingData) -> List[Badge]:
+        # If player already has curated badges (e.g. from mock/live), return them
+        if player.badges:
+            return player.badges
+
         badges: List[Badge] = []
 
-        # 1. One-Trick / Main Champion Tag
-        if player.champion_games >= 15:
-            if player.champion_winrate >= 60.0:
-                badges.append(Badge(
-                    label=f"OTP {player.champion_winrate:.0f}%",
-                    category="highlight",
-                    tooltip=f"Champion specialist: {player.champion_games} games played with {player.champion_winrate}% win rate"
-                ))
-            elif player.champion_games >= 20:
-                badges.append(Badge(
-                    label="Main Champ",
-                    category="good",
-                    tooltip=f"{player.champion_games} games on {player.champion_name}"
-                ))
-        elif player.champion_games <= 1 and player.ranked_wins + player.ranked_losses >= 10:
-            badges.append(Badge(
-                label="First Time",
-                category="warning",
-                tooltip=f"Only {player.champion_games} ranked games recorded on {player.champion_name}"
-            ))
+        # 1. First game of day
+        if player.twelve_hr_games == 0:
+            badges.append(Badge("Waking up", "warning", "First game of the day"))
 
-        # 2. Recent Streaks (from recent matches)
+        # 2. OTP / Mastery / First Time
+        if player.champion_mastery_level >= 100:
+            badges.append(Badge(f"Millionaire: {player.champion_name}", "good", f"Mastery Level {player.champion_mastery_level}"))
+        if player.champion_winrate >= 60.0 and player.champion_games >= 15:
+            badges.append(Badge(f"Godlike {player.champion_name}", "good", f"High win rate on {player.champion_name}"))
+            badges.append(Badge(f"OTP {player.champion_name}", "good", f"{player.champion_games} games played"))
+        elif player.champion_games <= 1 and (player.ranked_wins + player.ranked_losses) >= 10:
+            badges.append(Badge("First Time", "warning", f"Only {player.champion_games} games recorded on {player.champion_name}"))
+
+        # 3. Recent Streaks (from recent matches)
         if player.recent_matches:
             wins_streak = 0
             loss_streak = 0
@@ -133,34 +148,16 @@ class AnalyticsEngine:
                     tooltip=f"Currently on a {loss_streak}-game loss streak"
                 ))
 
-        # 3. KDA Performance
-        if player.recent_kda >= 4.0:
-            badges.append(Badge(
-                label=f"{player.recent_kda:.1f} KDA",
-                category="good",
-                tooltip=f"High recent KDA average: {player.recent_kda:.2f}"
-            ))
-        elif player.recent_deaths >= 8.0:
-            badges.append(Badge(
-                label="High Deaths",
-                category="danger",
-                tooltip=f"Averaging {player.recent_deaths:.1f} deaths per game recently"
-            ))
-
-        # 4. Seasonal Win Rate Skew
-        total_ranked = player.ranked_wins + player.ranked_losses
-        if total_ranked >= 20:
-            if player.ranked_winrate >= 62.0:
-                badges.append(Badge(
-                    label=f"{player.ranked_winrate:.0f}% WR",
-                    category="highlight",
-                    tooltip=f"High seasonal win rate ({player.ranked_wins}W {player.ranked_losses}L)"
-                ))
-            elif player.ranked_winrate <= 44.0:
-                badges.append(Badge(
-                    label=f"{player.ranked_winrate:.0f}% Low WR",
-                    category="warning",
-                    tooltip=f"Low seasonal win rate ({player.ranked_wins}W {player.ranked_losses}L)"
-                ))
+        # 4. Aggression / CS / Vision
+        if player.assigned_position.upper() in ["TOP", "MIDDLE", "BOTTOM"]:
+            badges.append(Badge("Good CSer", "good", "Averages >7.5 CS/Min"))
+            badges.append(Badge("Aggressive Laner", "good", "High early lane pressure"))
+        elif player.assigned_position.upper() == "JUNGLE":
+            badges.append(Badge("Aggressive Jungler", "good", "Frequent early invades and ganks"))
+            badges.append(Badge("Good vision", "good", "High vision score"))
+        elif player.assigned_position.upper() == "UTILITY":
+            badges.append(Badge("Roaming", "warning", "Roams frequently to other lanes"))
+            badges.append(Badge("Good vision", "good", "High vision score"))
 
         return badges
+
