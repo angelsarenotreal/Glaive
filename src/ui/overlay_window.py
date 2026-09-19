@@ -172,12 +172,41 @@ class GlaiveOverlayWindow(QWidget):
 
         self.container_layout.addWidget(self.update_banner)
 
-        # ---------------- 1. Top Row: Red Team (5 Cards: TOP -> JGL -> MID -> ADC -> SUP) ----------------
+        # ---------------- 1. Waiting State Container (When no active match) ----------------
+        self.waiting_container = QFrame()
+        self.waiting_container.setStyleSheet("background: transparent; padding: 120px 20px;")
+        waiting_layout = QVBoxLayout(self.waiting_container)
+        waiting_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        waiting_layout.setSpacing(14)
+
+        wait_icon = QLabel("⚔️")
+        wait_icon.setStyleSheet("font-size: 38px;")
+        wait_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        waiting_layout.addWidget(wait_icon)
+
+        wait_title = QLabel("WAITING FOR LEAGUE OF LEGENDS MATCH")
+        wait_title.setStyleSheet("color: #ffffff; font-size: 16px; font-weight: 800; letter-spacing: 1.5px;")
+        wait_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        waiting_layout.addWidget(wait_title)
+
+        wait_subtitle = QLabel("Glaive is sleeping in the background. As soon as you enter a match loading screen, live stats for all 10 players will appear automatically.")
+        wait_subtitle.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 500;")
+        wait_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        waiting_layout.addWidget(wait_subtitle)
+
+        wait_hint = QLabel("Press [ Ctrl + X ] or Esc to toggle this overlay")
+        wait_hint.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: 700; margin-top: 8px;")
+        wait_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        waiting_layout.addWidget(wait_hint)
+
+        self.container_layout.addWidget(self.waiting_container)
+
+        # ---------------- 2. Top Row: Red Team (5 Cards: TOP -> JGL -> MID -> ADC -> SUP) ----------------
         self.red_cards_row = QHBoxLayout()
         self.red_cards_row.setSpacing(8)
         self.container_layout.addLayout(self.red_cards_row)
 
-        # ---------------- 2. Bottom Row: Blue Team (5 Cards: TOP -> JGL -> MID -> ADC -> SUP) ----------------
+        # ---------------- 3. Bottom Row: Blue Team (5 Cards: TOP -> JGL -> MID -> ADC -> SUP) ----------------
         self.blue_cards_row = QHBoxLayout()
         self.blue_cards_row.setSpacing(8)
         self.container_layout.addLayout(self.blue_cards_row)
@@ -185,9 +214,8 @@ class GlaiveOverlayWindow(QWidget):
         outer_layout.addWidget(self.main_container)
         self.set_window_opacity(self.cfg.opacity)
 
-        # Pre-populate with preview match data so overlay is ready immediately
-        from src.mock_data import get_mock_match_data
-        self.display_players(get_mock_match_data())
+        # Initial state: clean waiting state (no fake players)
+        self.show_waiting_state()
 
     def center_on_screen(self):
         screen = QApplication.primaryScreen()
@@ -221,12 +249,26 @@ class GlaiveOverlayWindow(QWidget):
         t = threading.Thread(target=run_update, daemon=True)
         t.start()
 
+    def show_waiting_state(self):
+        """Clears all cards and displays the clean waiting placeholder."""
+        self._clear_layout(self.red_cards_row)
+        self._clear_layout(self.blue_cards_row)
+        if hasattr(self, "waiting_container"):
+            self.waiting_container.show()
+
     def display_players(self, players: List[PlayerScoutingData]):
         """
-        Populates the 10 player cards:
+        Populates the 10 real player cards from active live match:
         - Top Row: Red Team (Team 200 / Chaos / Map Top), sorted TOP -> JGL -> MID -> ADC -> SUP
         - Bottom Row: Blue Team (Team 100 / Order / Map Bottom), sorted TOP -> JGL -> MID -> ADC -> SUP
         """
+        if not players:
+            self.show_waiting_state()
+            return
+
+        if hasattr(self, "waiting_container"):
+            self.waiting_container.hide()
+
         self._clear_layout(self.red_cards_row)
         self._clear_layout(self.blue_cards_row)
 
@@ -280,8 +322,9 @@ class GlaiveOverlayWindow(QWidget):
         if dlg.exec():
             self.cfg = self.config_manager.config
             self.set_window_opacity(self.cfg.opacity)
-            from src.mock_data import get_mock_match_data
-            self.display_players(get_mock_match_data())
+            if self.cfg.mock_mode:
+                from src.mock_data import get_mock_match_data
+                self.display_players(get_mock_match_data())
 
         self.show()
         self.raise_()

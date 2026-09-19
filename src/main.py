@@ -126,6 +126,7 @@ def main():
 
     def on_match_ended():
         hud_prompt.hide_prompt()
+        overlay.show_waiting_state()
         overlay.update_status_signal.emit("● WAITING FOR MATCH (PORT 2999)", "LIVE SCOUTING REPORT")
 
     # 10. Start Game Poller (Port 2999)
